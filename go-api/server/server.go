@@ -33,6 +33,7 @@ func setRouter() *gin.Engine {
 		AllowOrigins: []string{
 			"http://localhost", 
 			"http://localhost:3000",
+			"https://qmatta.vercel.app",
 		},
 		// アクセスを許可したいHTTPメソッド
 		AllowMethods: []string{
