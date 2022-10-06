@@ -68,7 +68,7 @@ func main() {
 	
 	// communityCollection init
 	CommunityCollection := db.MongoClient.Database("insertDB").Collection("communities")
-	var user_id_array []primitive.ObjectID
+	var user_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	communityId	:= primitive.NewObjectID()
 	docCom := &db_entity.Community{
 		CommunityId: communityId,
@@ -86,17 +86,19 @@ func main() {
 
 	// stampCollection init
 	stampCollection := db.MongoClient.Database("insertDB").Collection("stamps")
+	numaId, _ := primitive.ObjectIDFromHex("633ee6747701fa78b2af8486")
+	sukkiriId, _ := primitive.ObjectIDFromHex("633ee6747701fa78b2af8487")
 	docStamp := []interface{}{
 		&db_entity.Stamp{
-			StampId: primitive.NewObjectID(),
-			StampName: "test",
-			StampImg: "img_dir/test.png",
+			StampId: numaId,
+			StampName: "沼った",
+			StampImg: "img_dir/numa.png",
 			Status: "ぬまった",
 		},
 		&db_entity.Stamp{
-			StampId: primitive.NewObjectID(),
-			StampName: "test",
-			StampImg: "img_dir/test.png",
+			StampId: sukkiriId,
+			StampName: "スッキリ",
+			StampImg: "img_dir/sukkiri.png",
 			Status: "スッキリ",
 		},
 
@@ -111,10 +113,10 @@ func main() {
 
 	// userCollection init
 	userCollection := db.MongoClient.Database("insertDB").Collection("users")
-	var question_id_array []primitive.ObjectID
-	var like_id_array []primitive.ObjectID
-	var community_id_array []primitive.ObjectID
-	community_id_array = append(community_id_array, communityId)
+	var question_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
+	var like_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
+	var community_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
+	// community_id_array = append(community_id_array, communityId)
 	docUser := &db_entity.User{
 		UserId: primitive.NewObjectID(),
 		UserName: "test",

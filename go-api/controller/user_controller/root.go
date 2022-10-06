@@ -132,6 +132,10 @@ func (uc UserController) GetUserCommunity(c *gin.Context) {
 
 	// 配列の型を確定させるためにbsonを構造体に変換
 	err = bson.Unmarshal(doc_filter, &d_tmp)
+	if len(d_tmp.CommunityId) < 1 {
+		c.JSON(http.StatusOK, gin.H{"userCommunity": d_tmp.CommunityId})
+		return
+	}
 
 	var response UserCommunityResponse
 
@@ -149,10 +153,11 @@ func (uc UserController) GetUserCommunity(c *gin.Context) {
 			return
 		} else if err == mongo.ErrNoDocuments {
 			fmt.Printf("No document was found with the user_id")
-			c.JSON(http.StatusOK, gin.H{})
+			c.JSON(http.StatusOK, gin.H{"userCommunity": make([]string, 0)})
 			return
 		}
-
+		fmt.Println(doc_community["communityName"].(string))
+		fmt.Println("aaa")
 		response.UserCommunity = append(response.UserCommunity, doc_community["communityName"].(string))
 
 	}
