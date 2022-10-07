@@ -85,6 +85,7 @@ func setRouter() *gin.Engine {
 
 	// user登録
 	r.POST("/signup", login_controller.CreateUser)
+	// ユーザ認証
 	r.POST("/login", login_controller.LoginUser)
 
 	return r
