@@ -74,7 +74,7 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
 			return
 		}
-		c.JSON(200, gin.H{"result": true})
+		c.JSON(200, gin.H{"result": true, "msg": "Qmattaに登録されました"})
 		return
 
 	} else if err != nil {
