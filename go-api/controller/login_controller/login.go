@@ -131,17 +131,5 @@ func LoginUser(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{"result": true, "user": doc})
 		return
-		
-
-		// dbPassword := getUser(form.Username).Password
-		// log.Println(dbPassword)
-		// db := lib.NewSQLHandler().DB
-		// var user User
-		// db.First(&user, "username = ?", form.Username)
-		// dbPassword := user.Password
-		// // フォームから取得したユーザーパスワード
-		// formPassword := form.Password
-		// fmt.Println("送られたパスワード")
-		// fmt.Println(dbPassword, formPassword)
 	}
 }
