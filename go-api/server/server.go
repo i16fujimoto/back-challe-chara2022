@@ -83,7 +83,9 @@ func setRouter() *gin.Engine {
 		user_group.GET("icon/:user_id", ctrl.GetUserIcon)	
 	}
 
+	// user登録
 	r.POST("/signup", login_controller.CreateUser)
+	r.POST("/login", login_controller.LoginUser)
 
 	return r
 }
