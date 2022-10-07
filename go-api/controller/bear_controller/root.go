@@ -40,6 +40,42 @@ type DocTalk struct {
 	Talk []db_entity.Talk `json:"talk"`
 }
 
+// GET:  /bear
+func (bc BearController) GetNotLoginRresponse(c *gin.Context) {
+	
+	// ランダムにresponseを返却
+
+	var err error
+	bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
+	toneId, _ := primitive.ObjectIDFromHex("633ee9f501830d402ce385c3")
+	var doc_bearTone bson.Raw
+	if err = bearToneCollection.FindOne(context.TODO(), bson.M{"_id": toneId}, 
+		options.FindOne().SetProjection(bson.M{"talk.response": 1, "_id": 0})).Decode(&doc_bearTone); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
+		return
+	} else if err == mongo.ErrNoDocuments {
+		fmt.Printf("No document was found with the tone_id")
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
+	var d_tmp DocTalk
+	// 配列の型を確定させるためにbsonを構造体に変換
+	err = bson.Unmarshal(doc_bearTone, &d_tmp)
+
+	var response []string
+	for _, v := range d_tmp.Talk {
+		response = append(response, v.Response)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+    var idx int = rand.Intn(8)
+	talk := BearResponse{Response: response[idx]}
+
+	c.JSON(http.StatusOK, talk)
+
+}
+
 
 // POST: /bear/<str: user_id>
 func (bc BearController) PostResponse(c *gin.Context) {

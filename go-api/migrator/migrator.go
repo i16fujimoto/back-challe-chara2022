@@ -50,7 +50,7 @@ func main() {
 	for idx, talk := range response {
 		docTalk = append(docTalk, db_entity.Talk{ Id: uint(idx), Response: talk })
 	}
-	toneId := primitive.NewObjectID()
+	toneId, _ := primitive.ObjectIDFromHex("633ee9f501830d402ce385c3")
 	docTone := &db_entity.BearTone{
 		ToneId: toneId,
 		ToneName: "test",
@@ -112,13 +112,15 @@ func main() {
 	}
 
 	// userCollection init
+	// Test User
 	userCollection := db.MongoClient.Database("insertDB").Collection("users")
 	var question_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	var like_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	var community_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
+	userId, _ := primitive.ObjectIDFromHex("633ee9f501830d402ce385c5")
 	// community_id_array = append(community_id_array, communityId)
 	docUser := &db_entity.User{
-		UserId: primitive.NewObjectID(),
+		UserId: userId,
 		UserName: "test",
 		EmailAddress: "test@example.com",
 		Password: "password",
