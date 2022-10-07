@@ -3,6 +3,7 @@ package server
 import (
 	"back-challe-chara2022/controller/bear_controller"
 	"back-challe-chara2022/controller/user_controller"
+	"back-challe-chara2022/controller/login_controller"
 	
 	"time"
 	"os"
@@ -81,6 +82,11 @@ func setRouter() *gin.Engine {
 		// userのアイコンを取得
 		user_group.GET("icon/:user_id", ctrl.GetUserIcon)	
 	}
+
+	// user登録
+	r.POST("/signup", login_controller.CreateUser)
+	r.POST("/login", login_controller.LoginUser)
+
 	return r
 }
 
