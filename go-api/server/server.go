@@ -47,6 +47,7 @@ func setRouter() *gin.Engine {
 		// 許可したいHTTPリクエストヘッダ
 		AllowHeaders: []string{
 			"Access-Control-Allow-Credentials",
+			"Access-Control-Allow-Origin",
 			"Access-Control-Allow-Headers",
 			"Content-Type",
 			"Content-Length",
