@@ -31,3 +31,4 @@ mongo_init
 # minIO
 /minio/config
 /minio/data
+/go-api/s3.go
