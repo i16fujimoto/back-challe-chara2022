@@ -24,3 +24,10 @@ db
 db_data
 configdb
 mongo_init
+
+# env file
+.env
+
+# minIO
+/minio/config
+/minio/data

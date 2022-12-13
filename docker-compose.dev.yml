@@ -10,7 +10,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      MONGO_URI: mongodb://root:root@mongo:27017/?maxIdleTimeMS=30&maxPoolSize=20
+      MONGO_URI: ${MONGO_URI}
       GO111MODULE: "on"
       PORT: "8080"
     volumes:
@@ -21,8 +21,8 @@ services:
     image: mongo:latest
     restart: always
     environment:
-        MONGO_INITDB_ROOT_USERNAME: root
-        MONGO_INITDB_ROOT_PASSWORD: root
+        MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+        MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - 27017:27017
     container_name: mongo
@@ -35,6 +35,35 @@ services:
       # データの永続化
       - ./db_data:/data/db
       - ./configdb:/data/configdb
+
+  # Local S3のコンテナ
+  minio:
+    image: minio/minio:RELEASE.2021-06-17T00-10-46Z
+    container_name: minio_qmatta
+    environment:
+        MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+        MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    entrypoint: bash
+
+    # バケット設定情報格納フォルダの作成
+    # バケットポリシーをコピー
+    # 初期データをコピー（bucket自体は /data に作成される）
+    # s3サーバ起動
+    command: -c "
+      mkdir -p /data/.minio.sys/buckets;
+      cp -r /policies/* /data/.minio.sys/;
+      cp -r /export/* /data/;
+      /usr/bin/minio server /data;"
+
+    volumes:
+        - ./minio/data:/data # データの永続化
+        - ./minio/export:/export
+        - ./minio/config:/root/.minio 
+        - ./minio/policies:/policies
+
+    ports:
+       - 9090:9000
+
 
 # volumeを定義
 volumes:
