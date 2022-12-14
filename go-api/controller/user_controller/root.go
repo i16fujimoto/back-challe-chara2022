@@ -8,7 +8,6 @@ import (
 
 	"net/http"
 	"fmt"
-	"io/ioutil"
 	"context"
 	"strings"
 	
@@ -214,8 +213,10 @@ func (uc UserController) GetUserIcon(c *gin.Context) {
 	var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
 	var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
 	
+	fmt.Println(bucketName, key)
+	
 	// S3インスタンスを作成
-	s3Instance, err := s3.newS3()
+	s3Instance, err := s3.NewS3()
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"code": 503,
@@ -224,18 +225,15 @@ func (uc UserController) GetUserIcon(c *gin.Context) {
 	}
 
 	// S3から画像ファイルのダウンロード
-	downloadKey := s3.getObjectInput(bucketName, key)
-	imageData := s3.download(s3Instance, downloadKey) //[]byte
-
-
-
-	buf, err := ioutil.ReadFile(url)
+	downloadKey := s3.GetObjectInput(bucketName, key)
+	buf, err := s3.Download(s3Instance, downloadKey) //[]byte
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
-		return
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"code": 404,
+			"message": err.Error(),
+		})
 	} else {
 		response := UserIconResponse{UserIcon: buf}
 		c.JSON(http.StatusOK, response)
 	}
-
 }

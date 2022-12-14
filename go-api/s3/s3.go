@@ -15,7 +15,7 @@ import (
 )
 
 // S3のインスタンス作成
-func newS3()(*s3.S3, error) {
+func NewS3()(*s3.S3, error) {
 
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -46,7 +46,7 @@ func newS3()(*s3.S3, error) {
 }
 
 // ダウンロードするオブジェクトの情報のゲッター
-func getObjectInput(bucketName string, key string) *s3.GetObjectInput {
+func GetObjectInput(bucketName string, key string) *s3.GetObjectInput {
 	return &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(key),
@@ -54,7 +54,7 @@ func getObjectInput(bucketName string, key string) *s3.GetObjectInput {
 }
 
 // S3にファイルをダウンロードし，その情報を返す
-func download(s3_download *s3.S3, downloadKey *s3.GetObjectInput)([]byte, error) {
+func Download(s3_download *s3.S3, downloadKey *s3.GetObjectInput)([]byte, error) {
 
 	/*
 	（下記では，必ずオブジェクトをファイル化するときに利用する）
@@ -103,7 +103,7 @@ func download(s3_download *s3.S3, downloadKey *s3.GetObjectInput)([]byte, error)
 }
 
 
-func getPutObjectInput(bucketName string, key string, imageFile *os.File) *s3.PutObjectInput {
+func GetPutObjectInput(bucketName string, key string, imageFile *os.File) *s3.PutObjectInput {
 	return &s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:	aws.String(key),	
