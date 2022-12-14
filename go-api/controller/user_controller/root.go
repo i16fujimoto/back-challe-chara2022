@@ -3,12 +3,13 @@ package user_controller
 import (
 	"back-challe-chara2022/entity/request_entity/body"
 	"back-challe-chara2022/db"
+	"back-challe-chara2022/s3"
 	// "back-challe-chara2022/entity/db_entity"
 
 	"net/http"
 	"fmt"
-	"io/ioutil"
 	"context"
+	"strings"
 	
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -36,13 +37,13 @@ type DocCommunity struct {
 	CommunityId []string `json:"communityId"`
 }
 
-// PATCH: /user/status/<uuid: user_id>
+// PATCH: /user/status/<uuid: userId>
 func (uc UserController) PatchUserStatus(c *gin.Context) {
 
 	// スタンプが押された際に，userのステータスを更新
 
-	user_id, _ := primitive.ObjectIDFromHex(c.Param("user_id"))
-	fmt.Println(user_id) // debug message
+	userId, _ := primitive.ObjectIDFromHex(c.Param("userId"))
+	fmt.Println(userId) // debug message
 
 	var request body.PatchUserStatusBody
 	// bodyのjsonデータを構造体にBind
@@ -53,38 +54,44 @@ func (uc UserController) PatchUserStatus(c *gin.Context) {
 	}
 	fmt.Println(request.StampId) // debug print
 
-	var doc_stamp bson.M
+	var docStamp bson.M
 	// 検索条件
 	stampId, _ := primitive.ObjectIDFromHex(request.StampId)
-	filter_stamp := bson.D{{"_id", stampId}}
-	fmt.Println(filter_stamp)
+	filterStamp := bson.D{{"_id", stampId}}
+	fmt.Println(filterStamp)
 	// query to stampCollection
 	stampCollection := db.MongoClient.Database("insertDB").Collection("stamps")
-	if err := stampCollection.FindOne(context.TODO(), filter_stamp, 
-		options.FindOne().SetProjection(bson.M{"status": 1, "_id": 0})).Decode(&doc_stamp); err != nil {
+	if err := stampCollection.FindOne(context.TODO(), filterStamp, 
+		options.FindOne().SetProjection(bson.M{"status": 1, "_id": 0})).Decode(&docStamp); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
 	} else if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with the stamp_id")
-		c.JSON(http.StatusOK, gin.H{})
+		fmt.Printf("No document was found with the stampId")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": 404,
+			"message": "No document was found with the stampId",
+		})
 		return
 	}
 
-	fmt.Println(doc_stamp)
+	fmt.Println(docStamp)
 	// update raw data
-	update_fields := bson.M{
+	updateFields := bson.M{
 		"$set": bson.M{
-			"status": doc_stamp["status"].(string),
+			"status": docStamp["status"].(string),
 		},
 	}
-	filter := bson.M{"_id": user_id}
+	filter := bson.M{"_id": userId}
 	userCollection := db.MongoClient.Database("insertDB").Collection("users")
-	result, err := userCollection.UpdateOne(context.TODO(), filter, update_fields)
+	result, err := userCollection.UpdateOne(context.TODO(), filter, updateFields)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
 		return
 	} else if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with the user_id")
-		c.JSON(http.StatusOK, gin.H{})
+		fmt.Printf("No document was found with the userId")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": 404,
+			"message": "No document was found with the userId",
+		})
 		return
 	}
 
@@ -102,14 +109,14 @@ func (uc UserController) PatchUserStatus(c *gin.Context) {
 	return
 }
 
-// GET: /user/community/<uuid: user_id>
+// GET: /user/community/<uuid: userId>
 // $inを用いることで1つのクエリでいけるかも
 func (uc UserController) GetUserCommunity(c *gin.Context) {
 
-	// user_idが所属するコミュニティのcommunity_nameを全て返す
+	// userIdが所属するコミュニティのcommunity_nameを全て返す
 
-	user_id, _ := primitive.ObjectIDFromHex(c.Param("user_id"))
-	fmt.Println(user_id) // debug message
+	userId, _ := primitive.ObjectIDFromHex(c.Param("userId"))
+	fmt.Println(userId) // debug message
 
 	var err error
 
@@ -117,15 +124,18 @@ func (uc UserController) GetUserCommunity(c *gin.Context) {
 
 	var doc_filter bson.Raw
 	// 検索条件
-	filter := bson.D{{"_id", user_id}}
+	filter := bson.D{{"_id", userId}}
 	// query the user collection
 	err = userCollection.FindOne(context.TODO(), filter, options.FindOne().SetProjection(bson.M{"communityId": 1})).Decode(&doc_filter)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
 		return
 	} else if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with the user_id")
-		c.JSON(http.StatusOK, gin.H{})
+		fmt.Printf("No document was found with the userId")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": 404,
+			"message": "No document was found with the userId",
+		})
 		return
 	}
 	var d_tmp DocCommunity
@@ -141,24 +151,27 @@ func (uc UserController) GetUserCommunity(c *gin.Context) {
 
 	for _, doc := range d_tmp.CommunityId {
 
-		var doc_community bson.M
+		var docCommunity bson.M
 		// 検索条件
 		id, _ := primitive.ObjectIDFromHex(doc)
- 		filter_community := bson.M{"_id": id}
+ 		filterCommunity := bson.M{"_id": id}
 		// query the community collection
 		communityCollection := db.MongoClient.Database("insertDB").Collection("communities")
-		err = communityCollection.FindOne(context.TODO(), filter_community, options.FindOne().SetProjection(bson.M{"communityName": 1, "_id": 0})).Decode(&doc_community)
+		err = communityCollection.FindOne(context.TODO(), filterCommunity, options.FindOne().SetProjection(bson.M{"communityName": 1, "_id": 0})).Decode(&docCommunity)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
 			return
 		} else if err == mongo.ErrNoDocuments {
-			fmt.Printf("No document was found with the user_id")
-			c.JSON(http.StatusOK, gin.H{"userCommunity": make([]string, 0)})
+			fmt.Printf("No document was found with the userId")
+			// c.JSON(http.StatusOK, gin.H{"userCommunity": make([]string, 0)})
+			c.JSON(http.StatusNotFound, gin.H{
+				"code": 404,
+				"message": "No document was found with the userId",
+			})
 			return
 		}
-		fmt.Println(doc_community["communityName"].(string))
-		fmt.Println("aaa")
-		response.UserCommunity = append(response.UserCommunity, doc_community["communityName"].(string))
+		fmt.Println(docCommunity["communityName"].(string))
+		response.UserCommunity = append(response.UserCommunity, docCommunity["communityName"].(string))
 
 	}
 
@@ -168,39 +181,59 @@ func (uc UserController) GetUserCommunity(c *gin.Context) {
 
 }
 
-// GET: /user/icon/<uuid: user_id>
+// GET: /user/icon/<uuid: userId>
 func (uc UserController) GetUserIcon(c *gin.Context) {
 
-	// user_idのユーザのiconを返す
+	// userIdのユーザのiconを返す
 
-	user_id, _ := primitive.ObjectIDFromHex(c.Param("user_id"))
-	fmt.Println(user_id) // debug message
+	userId, _ := primitive.ObjectIDFromHex(c.Param("userId"))
+	fmt.Println(userId) // debug message
 
 	var err error
 	userCollection := db.MongoClient.Database("insertDB").Collection("users")
 	var doc bson.M
 	// 検索条件
-	filter := bson.M{"_id": user_id}
+	filter := bson.M{"_id": userId}
 	// query
 	if err := userCollection.FindOne(context.TODO(), filter, 
 		options.FindOne().SetProjection(bson.M{"icon": 1, "_id": 0})).Decode(&doc); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
 		return
 	} else if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with the user_id")
-		c.JSON(http.StatusOK, gin.H{})
+		fmt.Printf("No document was found with the userId")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": 404,
+			"message": "No document was found with the userId",
+		})
 		return
 	}
 
-	// 画像のbyteデータ読み込み
+	// S3バケットとオブジェクトを指定
 	url := doc["icon"].(string)
-	buf, err := ioutil.ReadFile(url)
+	var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+	var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+	
+	fmt.Println(bucketName, key)
+	
+	// S3インスタンスを作成
+	s3Instance, err := s3.NewS3()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
-		return
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"code": 503,
+			"message": "Service Unavailable",
+		})
+	}
+
+	// S3から画像ファイルのダウンロード
+	downloadKey := s3.GetObjectInput(bucketName, key)
+	buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"code": 404,
+			"message": err.Error(),
+		})
 	} else {
 		response := UserIconResponse{UserIcon: buf}
 		c.JSON(http.StatusOK, response)
 	}
-
 }
