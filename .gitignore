@@ -32,3 +32,6 @@ mongo_init
 /minio/config
 /minio/data
 /go-api/s3.go
+
+# chatGPT
+/go-api/chatgptTest.go

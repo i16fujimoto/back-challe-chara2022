@@ -3,14 +3,16 @@ module back-challe-chara2022
 go 1.18
 
 require (
+	github.com/PullRequestInc/go-gpt3 v1.1.10
+	github.com/aws/aws-sdk-go v1.44.158
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.8.1
+	github.com/joho/godotenv v1.4.0
 	go.mongodb.org/mongo-driver v1.10.2
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 )
 
 require (
-	github.com/aws/aws-sdk-go v1.44.158 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
