@@ -77,11 +77,11 @@ func setRouter() *gin.Engine {
 	{
 		ctrl := user_controller.UserController{}
 		// userのステータスを更新
-		user_group.PATCH("status/:user_id", ctrl.PatchUserStatus)
+		user_group.PATCH("status/:userId", ctrl.PatchUserStatus)
 		// userの所属するコミュニティを全て取得
-		user_group.GET("community/:user_id", ctrl.GetUserCommunity)
+		user_group.GET("community/:userId", ctrl.GetUserCommunity)
 		// userのアイコンを取得
-		user_group.GET("icon/:user_id", ctrl.GetUserIcon)	
+		user_group.GET("icon/:userId", ctrl.GetUserIcon)	
 	}
 
 	// user登録

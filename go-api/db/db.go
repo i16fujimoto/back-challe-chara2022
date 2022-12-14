@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/bsonoptions"
 	// "go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/joho/godotenv"
 )
 
 var MongoClient *mongo.Client
@@ -21,12 +22,18 @@ var MongoClient *mongo.Client
 
 // Databaseの初期化
 func InitDB() {
+	
+	var err error
+	err = godotenv.Load(".env")
+	if err != nil {
+		fmt.Println("Error loading .env file")
+		return
+	}
 
 	// 空のコンテキストを作成
 	ctx := context.Background()
 	fmt.Println(os.Getenv("MONGO_URI")) // debug msg
 
-	var err error
 	// Create a new client and connect to the server
 	// 接続先の設定
 	opt := options.Client().ApplyURI(os.Getenv("MONGO_URI"))
