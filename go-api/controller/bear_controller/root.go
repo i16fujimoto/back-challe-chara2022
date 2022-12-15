@@ -42,7 +42,7 @@ func (bc BearController) GetNotLoginResponse(c *gin.Context) {
 	
 	var request body.SendBearBody
 	// bodyのjsonデータを構造体にBind
-	if err := c.Bind(&request); err != nil {
+	if err := c.BindJSON(&request); err != nil {
 		// bodyのjson形式が合っていない場合
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code": http.StatusBadRequest,
@@ -55,72 +55,44 @@ func (bc BearController) GetNotLoginResponse(c *gin.Context) {
 	var err error
 	var response string
 
-	if request.Bot {
+	if *request.Bot {
 		response = "chatGPT" 
 	} else {
 		// 現在コレクション内に入っている励まし言葉の中から1つを抽出
 		bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
-		// filter
-		filter := bson.M{ 
-			"createdAt": bson.D{{"$lte", time.Now()}},
-		}
-		// query result
-		var result bson.M
-		// query
-		if err = bearToneCollection.FindOne(context.TODO(), filter, 
-			options.FindOne().SetProjection(bson.M{"response": 1, "_id": 0})).Decode(&result); err != nil {
+		// Aggregate executes an aggregate command against the collection and returns a cursor over the resulting documents.
+		var cursor *mongo.Cursor
+		pipeline := []bson.D{bson.D{{"$sample", bson.D{{"size", 1}}}}}
+		cursor, err = bearToneCollection.Aggregate(context.TODO(), pipeline)
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code": http.StatusBadRequest,
 				"message": err.Error(),
 			})
-			return
+			return 
 		} else if err == mongo.ErrNoDocuments {
 			fmt.Printf("No document was found with the Responses")
 			c.JSON(http.StatusNotFound, gin.H{
 				"code": http.StatusNotFound,
 				"massage": err.Error(),
 			})
+			return 
+		}
+		var result []bson.M
+		if err := cursor.All(context.TODO(), &result); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
 			return
 		}
-		response = result["response"].(string)
+
+		response = result[0]["response"].(string)
 	}
 
 	// 返り値
 	c.JSON(http.StatusOK, BearResponse{Response: response})
 	return
-
-	// // ランダムにresponseを返却
-	// var err error
-	// bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
-	// toneId, _ := primitive.ObjectIDFromHex("633ee9f501830d402ce385c3")
-	// var doc_bearTone bson.Raw
-	// if err = bearToneCollection.FindOne(context.TODO(), bson.M{"_id": toneId}, 
-	// 	options.FindOne().SetProjection(bson.M{"talk.response": 1, "_id": 0})).Decode(&doc_bearTone); err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
-	// 	return
-	// } else if err == mongo.ErrNoDocuments {
-	// 	fmt.Printf("No document was found with the toneId")
-	// 	c.JSON(http.StatusNotFound, gin.H{
-	// 		"code": 404,
-	// 		"message": "No document was found with the toneId",
-	// 	})
-	// 	return
-	// }
-
-	// var d_tmp DocTalk
-	// // 配列の型を確定させるためにbsonを構造体に変換
-	// err = bson.Unmarshal(doc_bearTone, &d_tmp)
-
-	// var response []string
-	// for _, v := range d_tmp.Talk {
-	// 	response = append(response, v.Response)
-	// }
-
-	// rand.Seed(time.Now().UnixNano())
-    // var idx int = rand.Intn(8)
-	// talk := BearResponse{Response: response[idx]}
-
-	// c.JSON(http.StatusOK, talk)
 }
 
 
@@ -129,7 +101,7 @@ func (bc BearController) PostResponse(c *gin.Context) {
 
 	var request body.SendBearBody
 	// bodyのjsonデータを構造体にBind
-	if err := c.Bind(&request); err != nil {
+	if err := c.BindJSON(&request); err != nil {
 		// bodyのjson形式が合っていない場合
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code": http.StatusBadRequest,
@@ -145,34 +117,39 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	var err error
 	var response string
 
-	if request.Bot {
+	if *request.Bot {
 		response = "chatGPT" 
 	} else {
-		// 現在コレクション内に入っている励まし言葉の中から1つを抽出
+		// 現在コレクション内に入っている励まし言葉の中から1つを抽出（ランダム）
 		bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
-		// filter
-		filter := bson.M{ 
-			"createdAt": bson.D{{"$lte", time.Now()}},
-		}
-		// query result
-		var result bson.M
-		// query
-		if err = bearToneCollection.FindOne(context.TODO(), filter, 
-			options.FindOne().SetProjection(bson.M{"response": 1, "_id": 0})).Decode(&result); err != nil {
+		// Aggregate executes an aggregate command against the collection and returns a cursor over the resulting documents.
+		var cursor *mongo.Cursor
+		pipeline := []bson.D{bson.D{{"$sample", bson.D{{"size", 1}}}}}
+		cursor, err = bearToneCollection.Aggregate(context.TODO(), pipeline)
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code": http.StatusBadRequest,
 				"message": err.Error(),
 			})
-			return
+			return 
 		} else if err == mongo.ErrNoDocuments {
 			fmt.Printf("No document was found with the Responses")
 			c.JSON(http.StatusNotFound, gin.H{
 				"code": http.StatusNotFound,
 				"massage": err.Error(),
 			})
+			return 
+		}
+		var result []bson.M
+		if err := cursor.All(context.TODO(), &result); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
 			return
 		}
-		response = result["response"].(string)
+		// ランダムに返ってきた結果を設定
+		response = result[0]["response"].(string)
 	}
 
 	// 送られてきた内容（message）はDBに保存
@@ -229,7 +206,11 @@ func (bc BearController) GetHistory(c *gin.Context) {
 	// findOptions := options.Find().SetProjection(bson.M{"_id": 0, "messages" : 1}).SetLimit(10).SetSort(bson.M{"messages": bson.M{"createdAt": -1}})
 	cur, err = comCollection.Find(context.TODO(), filter, findOptions)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
 		return
 	} else if err == mongo.ErrNoDocuments {
 		fmt.Println("No document was found with the userId")
@@ -242,7 +223,10 @@ func (bc BearController) GetHistory(c *gin.Context) {
 	// 検索結果をresultsにデコード
 	var results []bson.M
 	if err = cur.All(context.TODO(), &results); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
 		return
 	}
 

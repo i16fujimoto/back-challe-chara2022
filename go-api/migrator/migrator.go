@@ -100,7 +100,7 @@ func main() {
 	var question_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	var like_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	var community_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
-	userId, _ := primitive.ObjectIDFromHex("633ee9f501830d402ce385c5")
+	userId := primitive.NewObjectID()
 	// community_id_array = append(community_id_array, communityId)
 	docUser := &db_entity.User{
 		UserId: userId,

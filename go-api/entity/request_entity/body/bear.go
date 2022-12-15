@@ -5,10 +5,10 @@ import (
 )
 
 type SendBearBody struct {
-	Text string `json:"Text" binding:"required"`
-	Bot bool `json:"Bot" binding:"required"`
+	Text string `json:"text" binding:"required"`
+	Bot *bool `json:"bot" binding:"required"`
 }
 
 type GetHistoryBody struct {
-	Start time.Time `json:"Start"`
+	Start time.Time `json:"start"`
 }
