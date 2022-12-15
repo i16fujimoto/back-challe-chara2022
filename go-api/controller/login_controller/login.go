@@ -43,28 +43,22 @@ func CreateUser(c *gin.Context) {
 		// パスワードのハッシュ化
 		passwordEncrypt, _ := crypto.PasswordEncrypt(form.Password)
 
-		var question_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
-		var like_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
-		var community_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
-
-		// 仮データ
-		toneId, _ := primitive.ObjectIDFromHex("633ee9f501830d402ce385c3")
-		bearId, _ := primitive.ObjectIDFromHex("633f7fc114dae75d9e701e24")
+		var questionIdArray []primitive.ObjectID = make([]primitive.ObjectID, 0)
+		var likeIdArray []primitive.ObjectID = make([]primitive.ObjectID, 0)
+		var communityIdArray []primitive.ObjectID = make([]primitive.ObjectID, 0)
 
 		docUser := &db_entity.User{
 			UserId: primitive.NewObjectID(),
 			UserName: "べあ",
 			EmailAddress: form.EmailAddress,
 			Password: passwordEncrypt,
-			Icon: "img_dir/icon.png",
+			Icon: "static/icon.jpg",
 			Profile: "test",
-			CommunityId: community_id_array,
+			CommunityId: communityIdArray,
 			Status: "スッキリ",
 			Role: db_entity.Role{RoleName: "admin", Permission: 7},
-			BearIcon: bearId,
-			BearTone: toneId,
-			Question: question_id_array,
-			Like: like_id_array,
+			Question: questionIdArray,
+			Like: likeIdArray,
 		}
 		fmt.Println(*docUser)
 
@@ -74,7 +68,7 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
 			return
 		}
-		c.JSON(200, gin.H{"result": true, "msg": "Qmattaに登録されました"})
+		c.JSON(http.StatusOK, gin.H{"result": true, "msg": "Qmattaに登録されました"})
 		return
 
 	} else if err != nil {
@@ -115,7 +109,11 @@ func LoginUser(c *gin.Context) {
 			return
 		} else if err == mongo.ErrNoDocuments {
 			fmt.Printf("No document was found with the user_id")
-			c.JSON(http.StatusOK, gin.H{"result": false, "user": nil})
+			c.JSON(http.StatusNotFound, gin.H{
+				"code": 404, 
+				"result": false, 
+				"msg": "Not Found",
+			})
 			return
 		}
 
@@ -125,7 +123,11 @@ func LoginUser(c *gin.Context) {
 		err = crypto.CompareHashAndPassword(doc["password"].(string), form.Password)
 		if err != nil {
 			fmt.Println("パスワードが一致しませんでした。：", err)
-			c.JSON(http.StatusOK, gin.H{"result": false, "user": nil})
+			c.JSON(http.StatusNotFound, gin.H{
+				"code": 404, 
+				"result": false, 
+				"msg": "Not Found",
+			})
 			return
 		}
 

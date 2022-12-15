@@ -32,6 +32,7 @@ mongo_init
 /minio/config
 /minio/data
 s3Test.go
+img_dir
 
 # chatGPT
 chatgptTest.go

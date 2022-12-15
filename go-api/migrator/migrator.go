@@ -20,50 +20,32 @@ func main() {
 	db.InitDB()
 
 	// test success
-
-	// bearCollection init
-	bearCollection := db.MongoClient.Database("insertDB").Collection("bears")
-	bearId := primitive.NewObjectID()
-	docBear := &db_entity.Bear{
-		BearId: bearId,
-		BearName: "kichiro",
-        BearIcon: "img_dir/test.png",
-        Detail: "テスト",
-	}
-
-	_, err1 := bearCollection.InsertOne(context.TODO(), docBear) // ここでMarshalBSON()される
-	if err1 != nil {
-		fmt.Println("Error inserting bear")
-        panic(err1)
-    } else {
-		fmt.Println("Successfully inserting bear")
-	}
 	
 	// bearToneCollection init
 	bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
 	// 仮レスポンス
-	response := [8]string{"そうだよね", "もう一回最初から教えてよ", "そこってどういうことなの？", 
-						"頑張ってるやん！", "もうちょっと詰めてみようよ！", "君がそんなに考えてわかんないなら，誰もわかんないよ！", 
-						"今，頭が回らないだけで少し時間を空けて考えたらわかる時もあるよ！", "それはもう心が１回休めって言ってるんだよ"}
+	responses := []string{"そうだよね", "もう一回最初から教えてよ", "そこってどういうことなの？", 
+						"<name> は頑張ってるやん！", "もうちょっと詰めてみようよ！", "<name> がそんなに考えてわかんないなら，誰もわかんないよ！", 
+						"今，頭が回らないだけで少し時間を空けて考えたらわかる時もあるよ！", "それはもう心が１回休めって言ってるんだよ",
+						"僕は <name> のことすごいと思ってるよ", "あきらめないで！", "深呼吸をして一旦落ち着いてみよ！",
+						"問題の発端を見つけないとだね．それを解決するためにはどうしたらいいんだろ？", "僕にもっと詳しく教えて！",
+						"苦しいときこそ僕を頼ってよ", "んー，ちょっと僕も考えてみるね", "甘いもの食べるといいかも！とっておきのハチミツわけてあげるよ！", 
+						"そんなことまでやってるの！偉いなぁ", "自分が思ってるより，<name>はすごい人だよ！", "10分くらい休憩して考えてみたら？", "後もうちょっとだよ！"}
 
-	var docTalk []db_entity.Talk
-	for idx, talk := range response {
-		docTalk = append(docTalk, db_entity.Talk{ Id: uint(idx), Response: talk })
-	}
-	toneId, _ := primitive.ObjectIDFromHex("633ee9f501830d402ce385c3")
-	docTone := &db_entity.BearTone{
-		ToneId: toneId,
-		ToneName: "test",
-		Detail: "テスト",
-		Talk: docTalk,
-	}
-
-	_, err2 := bearToneCollection.InsertOne(context.TODO(), docTone) // ここでMarshalBSON()される
-	if err2 != nil {
-		fmt.Println("Error inserting bear")
-        panic(err2)
-    } else {
-		fmt.Println("Successfully inserting bear_tone")
+	for _, response := range responses {
+		var err error
+		docTone := &db_entity.BearTone{
+			ToneId: primitive.NewObjectID(),
+			Response: response,
+		}
+	
+		_, err = bearToneCollection.InsertOne(context.TODO(), docTone) // ここでMarshalBSON()される
+		if err != nil {
+			fmt.Println("Error inserting bear")
+			panic(err)
+		} else {
+			fmt.Println("Successfully inserting bear_tone")
+		}
 	}
 	
 	// communityCollection init
@@ -74,6 +56,7 @@ func main() {
 		CommunityId: communityId,
 		CommunityName: "test",
 		Member: user_id_array,
+		Icon: "icon.jpg",
 	}
 
 	_, err3 := CommunityCollection.InsertOne(context.TODO(), docCom) // ここでMarshalBSON()される
@@ -92,13 +75,13 @@ func main() {
 		&db_entity.Stamp{
 			StampId: numaId,
 			StampName: "沼った",
-			StampImg: "img_dir/numa.png",
+			StampImg: "static/numa.png",
 			Status: "ぬまった",
 		},
 		&db_entity.Stamp{
 			StampId: sukkiriId,
 			StampName: "スッキリ",
-			StampImg: "img_dir/sukkiri.png",
+			StampImg: "static/sukkiri.png",
 			Status: "スッキリ",
 		},
 
@@ -117,7 +100,7 @@ func main() {
 	var question_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	var like_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	var community_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
-	userId, _ := primitive.ObjectIDFromHex("633ee9f501830d402ce385c5")
+	userId := primitive.NewObjectID()
 	// community_id_array = append(community_id_array, communityId)
 	docUser := &db_entity.User{
 		UserId: userId,
@@ -129,8 +112,6 @@ func main() {
 		CommunityId: community_id_array,
 		Status: "スッキリ",
 		Role: db_entity.Role{RoleName: "admin", Permission: 7},
-		BearIcon: bearId,
-		BearTone: toneId,
 		Question: question_id_array,
 		Like: like_id_array,
 	}
@@ -167,62 +148,74 @@ func main() {
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "Hello",
+			Text: "Hello",
+			Response: "頑張ってるやん！",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "H",
+			Text: "H",
+			Response: "頑張ってるやん！",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "He",
+			Text: "He",
+			Response: "頑張ってるやん！",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "Hel",
+			Text: "Hel",
+			Response: "頑張ってるやん！",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "Hell",
+			Text: "Hell",
+			Response: "きいちろう",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "aiueo",
+			Text: "aiueo",
+			Response: "古谷くんくらい真面目やん",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "zcv",
+			Text: "zcv",
+			Response: "君のそういうところが好きいちろう",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "sdfg",
+			Text: "sdfg",
+			Response: "頑張ってるやん！",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "dfgh",
+			Text: "dfgh",
+			Response: "頑張ってるやん！",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "osjdfo",
+			Text: "osjdfo",
+			Response: "頑張ってるやん！",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "lfssk",
+			Text: "lfssk",
+			Response: "頑張ってるやん！",
 		},
 		&db_entity.Communication {
 			Id: primitive.NewObjectID(),
 			UserId: docUser.UserId,
-			Messages: "wert",
+			Text: "wert",
+			Response: "頑張ってるやん！",
 		},
 	}
 

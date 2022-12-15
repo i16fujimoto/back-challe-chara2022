@@ -22,8 +22,6 @@ type User struct {
 	CommunityId []primitive.ObjectID `json:"communityId" bson:"communityId"`
 	Status string `json:"status" bson:"status"`
 	Role Role `json:"role" bson:"role"`
-	BearIcon primitive.ObjectID `json:"bearIcon" bson:"bearIcon"`
-	BearTone primitive.ObjectID `json:"bearTone" bson:"bearTone"`
 	Question []primitive.ObjectID `json:"question" bson:"question"`
 	Like []primitive.ObjectID `json:"like" bson:"like"` // QuestionにしたLikeを保持
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
@@ -46,6 +44,7 @@ type Community struct {
 	CommunityId primitive.ObjectID `json:"communityId" bson:"_id"`
 	CommunityName string `json:"communityName" bson:"communityName"`
 	Member []primitive.ObjectID `json:"member" bson:"member"`
+	Icon string `json:"icon" bson:"icon"`
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`
 	DeletedAt  *time.Time `json:"deletedAt" bson:"deletedAt"`
