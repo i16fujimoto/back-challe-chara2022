@@ -6,7 +6,6 @@ import (
 	"back-challe-chara2022/entity/db_entity"
 	"back-challe-chara2022/chatGPT"
 
-
 	"net/http"
 	"fmt"
 	"time"
@@ -126,7 +125,48 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	var response string
 
 	if *request.Bot {
-		response, err = chatGPT.Response(context.TODO(), []string{request.Text})
+
+		comCollection := db.MongoClient.Database("insertDB").Collection("communications")
+		// 検索条件
+		timeNow := time.Now()
+		filter := bson.M{
+			"userId": userId, 
+			"createdAt": bson.D{{"$gte", timeNow.Add(time.Minute * (-3))}},
+		}
+
+		fmt.Println(timeNow, timeNow.Add(time.Minute * (-3)))
+
+		var cur *mongo.Cursor
+		findOptions := options.Find().SetProjection(bson.M{"_id": 0, "text" : 1, "response": 1}).SetLimit(3).SetSort(bson.D{{"createdAt", -1}})
+		// findOptions := options.Find().SetProjection(bson.M{"_id": 0, "messages" : 1}).SetLimit(10).SetSort(bson.M{"messages": bson.M{"createdAt": -1}})
+		cur, err = comCollection.Find(context.TODO(), filter, findOptions)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+		// 検索結果をresultsにデコード
+		var results []bson.M
+		if err = cur.All(context.TODO(), &results); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		var text string
+		for _, r := range results {
+			text += r["text"].(string) + "\n"
+			text += r["response"].(string) + "\n"
+		}
+		text += request.Text
+
+		fmt.Println(text)
+
+		response, err = chatGPT.Response(context.TODO(), []string{text})
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code": http.StatusBadRequest,
@@ -187,6 +227,8 @@ func (bc BearController) PostResponse(c *gin.Context) {
 		return
 	}
 
+
+
 	// 返り値
 	c.JSON(http.StatusOK, BearResponse{Response: response})
 	return
@@ -229,7 +271,6 @@ func (bc BearController) GetHistory(c *gin.Context) {
 			"message": err.Error(),
 		})
 		return
-		return
 	} else if err == mongo.ErrNoDocuments {
 		fmt.Println("No document was found with the userId")
 		c.JSON(http.StatusNotFound, gin.H{
@@ -249,17 +290,12 @@ func (bc BearController) GetHistory(c *gin.Context) {
 	}
 
 	var historyArray []History = []History{}
-	// var messages []string
-	// var dates []primitive.DateTime
 	for _, r := range results {
 		history := History {
-			Text: r["messages"].(string),
+			Text: r["text"].(string),
 			Date:  r["createdAt"].(primitive.DateTime),
 		}
 		historyArray = append(historyArray, history)
-		// fmt.Printf("%T\n", r["createdAt"])
-		// messages = append(messages, r["messages"].(string))
-		// dates = append(dates, r["createdAt"].(primitive.DateTime))
 	}
 
 	response := BearHistoryResponse{Histories: historyArray}
