@@ -206,8 +206,30 @@ func (bc BearController) PostResponse(c *gin.Context) {
 			})
 			return
 		}
+
+		userId, _ := primitive.ObjectIDFromHex(c.Param("userId"))
+		fmt.Println(userId) // debug message
+
+		userCollection := db.MongoClient.Database("insertDB").Collection("users")
+		var doc bson.M
+		// 検索条件
+		filter := bson.M{"_id": userId}
+		// query
+		if err := userCollection.FindOne(context.TODO(), filter, 
+			options.FindOne().SetProjection(bson.M{"userName": 1, "_id": 0})).Decode(&doc); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
+			return
+		} else if err == mongo.ErrNoDocuments {
+			fmt.Printf("No document was found with the userId")
+			c.JSON(http.StatusNotFound, gin.H{
+				"code": 404,
+				"message": "No document was found with the userId",
+			})
+			return
+		}
+
 		// ランダムに返ってきた結果を設定
-		response = result[0]["response"].(string)
+		response = strings.Replace(result[0]["response"].(string), "<name>", doc["userName"].(string), -1)
 	}
 
 	// 送られてきた内容（message）はDBに保存
