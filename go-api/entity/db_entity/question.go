@@ -13,8 +13,8 @@ import (
 type Answer struct {
 	Id primitive.ObjectID `json:"id" bson:"_id"`
 	Detail string `json:"detail" bson:"detail"`
-	Image string `json:"image" bson:"image"`
-	Respondent User `json:"respondent" bson:"respondent"`
+	Image []string `json:"image" bson:"image"`
+	Respondent primitive.ObjectID `json:"respondent" bson:"respondent"` // User ObjectID
 	Like []primitive.ObjectID `json:"like" bson:"like"` // User.ObjectID
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`
@@ -35,7 +35,6 @@ func (a *Answer) MarshalBSON() ([]byte, error) {
 type Category struct {
 	Id primitive.ObjectID `json:"id" bson:"_id"`
 	CategoryName string `json:"categoryName" bson:"categoryName"`
-	Author User `json:"author" bson:"author"`
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`
 	DeletedAt  *time.Time `json:"deletedAt" bson:"deletedAt"`
@@ -57,7 +56,7 @@ type Question struct {
 	Title string `json:"title" bson:"title"`
 	Detail string `json:"detail" bson:"detail"`
 	Image []string `json:"image" bson:"image"` // 質問内に挿入する画像のパス
-	Questioner User `json:"questioner" bson:"questioner"`
+	Questioner primitive.ObjectID `json:"questioner" bson:"questioner"` // User ObjectID
 	Like []primitive.ObjectID `json:"like" bson:"like"` // USer.ObjectID
 	Priority string `json:"priority" bson:"priority"` // 緊急 or なるはや or まったり 等
 	Status string `json:"status" bson:"status"` // 回答募集中 or 沼り中 or 解決済 等

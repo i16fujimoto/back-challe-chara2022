@@ -107,7 +107,7 @@ func main() {
 		UserName: "test",
 		EmailAddress: "test@example.com",
 		Password: "password",
-		Icon: "img_dir/test.png",
+		Icon: "static/test.png",
 		Profile: "test",
 		CommunityId: community_id_array,
 		Status: "スッキリ",
@@ -226,5 +226,72 @@ func main() {
     } else {
 		fmt.Println("Successfully inserting communications")
 	}
+
+	// categoryCollection init
+	categoryCollection := db.MongoClient.Database("insertDB").Collection("categories")
+	docCategory := &db_entity.Category {
+		Id: primitive.NewObjectID(),
+		CategoryName: "環境構築",
+	}
+	_, err78 := categoryCollection.InsertOne(context.TODO(), docCategory) // ここでMarshalBSON()される
+	if err78 != nil {
+		fmt.Println("Error inserting category")
+        panic(err78)
+    } else {
+		fmt.Println("Successfully inserting categories")
+	}
+
+	// questionCollection init
+	questionCollection := db.MongoClient.Database("insertDB").Collection("questions")
+	docQuestion := []interface{}{
+		&db_entity.Question {
+			Id: primitive.NewObjectID(),
+			Title: "pythonがなんもわからん",
+			Detail: "#実装すること\n- pythonの環境構築\n- Goの環境構築\n",
+			Image: []string{"static/icon.jpg", "static/test.png"},
+			Questioner: docUser.UserId,
+			Like: []primitive.ObjectID{docUser.UserId},
+			Priority: "緊急", 
+			Status: "回答募集中", 
+			Category: []primitive.ObjectID{docCategory.Id},
+			Answer: []db_entity.Answer {
+				db_entity.Answer {
+					Id: primitive.NewObjectID(),
+					Detail: "## なんもわからん\n- pythonがまずわからん\n- Goとかもっとしらん\n- Swift神!!",
+					Image: []string{"static/icon.jpg", "static/test.png"},
+					Respondent: docUser.UserId,
+					Like: []primitive.ObjectID{docUser.UserId},
+				},	
+			},
+		},
+		&db_entity.Question {
+			Id: primitive.NewObjectID(),
+			Title: "質問の取得",
+			Detail: "#実装すること\n- swiftの環境構築\n- Javaの環境構築\n",
+			Image: []string{"static/icon.jpg", "static/test.png"},
+			Questioner: docUser.UserId,
+			Like: []primitive.ObjectID{docUser.UserId},
+			Priority: "緊急", 
+			Status: "回答募集中", 
+			Category: []primitive.ObjectID{docCategory.Id},
+			Answer: []db_entity.Answer {
+				db_entity.Answer {
+					Id: primitive.NewObjectID(),
+					Detail: "## なんもわからん\n- pythonがまずわからん\n- Goとかもっとしらん\n- Swift神!!",
+					Image: []string{"static/icon.jpg", "static/test.png"},
+					Respondent: docUser.UserId,
+					Like: []primitive.ObjectID{docUser.UserId},
+				},
+			},
+		},
+	}
+	_, err8 := questionCollection.InsertMany(context.TODO(), docQuestion) // ここでMarshalBSON()される
+	if err8 != nil {
+		fmt.Println("Error inserting Question")
+        panic(err8)
+    } else {
+		fmt.Println("Successfully inserting questions")
+	}
+
 	
 }
