@@ -4,12 +4,14 @@ import (
 	"back-challe-chara2022/entity/request_entity/body"
 	"back-challe-chara2022/db"
 	"back-challe-chara2022/entity/db_entity"
+	"back-challe-chara2022/chatGPT"
 
 
 	"net/http"
 	"fmt"
 	"time"
 	"context"
+	"strings"
 	
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,11 +35,7 @@ type BearHistoryResponse struct {
 	Histories []History `json:"histories"`
 }
 
-type DocTalk struct {
-	Talk []db_entity.BearTone `json:"talk"`
-}
-
-// GET:  /bear
+// GET: /bear
 func (bc BearController) GetNotLoginResponse(c *gin.Context) {
 	
 	var request body.SendBearBody
@@ -56,7 +54,17 @@ func (bc BearController) GetNotLoginResponse(c *gin.Context) {
 	var response string
 
 	if *request.Bot {
-		response = "chatGPT" 
+		response, err = chatGPT.Response(context.TODO(), []string{request.Text})
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+		}
+		fmt.Println(response) // debug
+		var return2Index int = strings.Index(response, "\n\n")
+		response = response[return2Index+2:]
+
 	} else {
 		// 現在コレクション内に入っている励まし言葉の中から1つを抽出
 		bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
@@ -118,7 +126,17 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	var response string
 
 	if *request.Bot {
-		response = "chatGPT" 
+		response, err = chatGPT.Response(context.TODO(), []string{request.Text})
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+		}
+		fmt.Println(response) // debug
+		var return2Index int = strings.Index(response, "\n\n")
+		response = response[return2Index+2:]
+
 	} else {
 		// 現在コレクション内に入っている励まし言葉の中から1つを抽出（ランダム）
 		bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
