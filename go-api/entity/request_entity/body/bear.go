@@ -4,8 +4,9 @@ import (
 	"time"
 )
 
-type PostSendBearBody struct {
-	Message string `json:"Message" binding:"required"`
+type SendBearBody struct {
+	Text string `json:"Text" binding:"required"`
+	Bot bool `json:"Bot" binding:"required"`
 }
 
 type GetHistoryBody struct {

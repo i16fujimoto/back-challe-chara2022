@@ -65,12 +65,10 @@ func setRouter() *gin.Engine {
 	{
 		ctrl := bear_controller.BearController{}
 		// 熊の返答を返す
-		bear_group.GET("/", ctrl.GetNotLoginRresponse) // not required login user 
+		bear_group.GET("/", ctrl.GetNotLoginResponse) // not required login user 
 		bear_group.POST(":user_id", ctrl.PostResponse) // required login user
 		// クマとの対話履歴を返す
 		bear_group.GET("history/:user_id", ctrl.GetHistory)
-		// クマのiconデータ，口調idを返す
-		bear_group.GET("custom/:user_id", ctrl.GetCustom)
 	}
 
 	user_group := r.Group("user")
