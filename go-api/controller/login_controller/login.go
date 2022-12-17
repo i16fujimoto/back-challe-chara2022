@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"github.com/gin-gonic/gin"
 )
+
 // POST: /signup
 func CreateUser(c *gin.Context) {
 
@@ -83,7 +84,7 @@ func CreateUser(c *gin.Context) {
 }
 
 // POST: /login
-func LoginUser(c *gin.Context) {
+func LoginUser(c *gin.Context)(interface{}, error) {
 
 	// ログイン機能
 
@@ -92,8 +93,7 @@ func LoginUser(c *gin.Context) {
 
 	// バリデーション処理
 	if err = c.BindJSON(&form); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
-		return
+		return "", err
 	} else {
 
 		// メールアドレスの照合
@@ -105,33 +105,24 @@ func LoginUser(c *gin.Context) {
 		// query the user collection
 		err = userCollection.FindOne(context.TODO(), filter).Decode(&doc)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
-			return
-		} else if err == mongo.ErrNoDocuments {
-			fmt.Printf("No document was found with the user_id")
-			c.JSON(http.StatusNotFound, gin.H{
-				"code": 404, 
-				"result": false, 
-				"msg": "Not Found",
-			})
-			return
+			return nil, err
 		}
 
 		// ユーザーパスワードの比較
-		passwordEncrypt, _ := crypto.PasswordEncrypt(form.Password)
-		fmt.Println(doc["password"].(string), passwordEncrypt) // debug msg
+		crypto.PasswordEncrypt(form.Password)
 		err = crypto.CompareHashAndPassword(doc["password"].(string), form.Password)
 		if err != nil {
 			fmt.Println("パスワードが一致しませんでした。：", err)
-			c.JSON(http.StatusNotFound, gin.H{
-				"code": 404, 
-				"result": false, 
-				"msg": "Not Found",
-			})
-			return
+			return nil, err
 		}
 
-		c.JSON(http.StatusOK, gin.H{"result": true, "user": doc})
-		return
+		var user db_entity.User
+		var docBson []byte
+		// bsonにエンコード
+		docBson, err = bson.Marshal(doc)
+		// 構造体にデコード
+		bson.Unmarshal(docBson, &user)
+
+		return &user, nil
 	}
 }

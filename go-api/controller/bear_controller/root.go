@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"github.com/gin-gonic/gin"
+	jwt "github.com/appleboy/gin-jwt/v2"
 )
 
 type BearController struct {}
@@ -72,6 +73,7 @@ func (bc BearController) GetNotLoginResponse(c *gin.Context) {
 		pipeline := []bson.D{bson.D{{"$sample", bson.D{{"size", 1}}}}}
 		cursor, err = bearToneCollection.Aggregate(context.TODO(), pipeline)
 		if err != nil {
+			fmt.Println("aaaaa")
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code": http.StatusBadRequest,
 				"message": err.Error(),
@@ -94,7 +96,8 @@ func (bc BearController) GetNotLoginResponse(c *gin.Context) {
 			return
 		}
 
-		response = result[0]["response"].(string)
+		response = strings.Replace(result[0]["response"].(string), "<name>", "きみ", -1)
+		
 	}
 
 	// 返り値
@@ -117,7 +120,8 @@ func (bc BearController) PostResponse(c *gin.Context) {
 		return
 	}
 
-	userId, _ := primitive.ObjectIDFromHex(c.Param("userId"))
+	claims := jwt.ExtractClaims(c)
+	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
 	fmt.Println(userId) // debug message
 
 	// クマのレスポンスを返却
@@ -207,9 +211,6 @@ func (bc BearController) PostResponse(c *gin.Context) {
 			return
 		}
 
-		userId, _ := primitive.ObjectIDFromHex(c.Param("userId"))
-		fmt.Println(userId) // debug message
-
 		userCollection := db.MongoClient.Database("insertDB").Collection("users")
 		var doc bson.M
 		// 検索条件
@@ -249,15 +250,13 @@ func (bc BearController) PostResponse(c *gin.Context) {
 		return
 	}
 
-
-
 	// 返り値
 	c.JSON(http.StatusOK, BearResponse{Response: response})
 	return
 }
 
 
-// GET: /bear/history/<uuid:userId>
+// GET: /bear/history
 func (bc BearController) GetHistory(c *gin.Context) {
 
 
@@ -273,7 +272,8 @@ func (bc BearController) GetHistory(c *gin.Context) {
 		request.Start = time.Now()
 	}
 	
-	userId, _ := primitive.ObjectIDFromHex(c.Param("userId"))
+	claims := jwt.ExtractClaims(c)
+	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
 	fmt.Println(userId) // debug message
 
 	comCollection := db.MongoClient.Database("insertDB").Collection("communications")
