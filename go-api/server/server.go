@@ -93,6 +93,8 @@ func setRouter() *gin.Engine {
 		questionGroup := auth.Group("/question")
 		{
 			ctrl := question_controller.QuestionController{}
+			// 質問の一覧を取得
+			questionGroup.GET("/", ctrl.GetQuestions)
 			// 優先度一覧を取得
 			questionGroup.GET("/priority", ctrl.GetPriority)
 			// ステータス一覧を取得

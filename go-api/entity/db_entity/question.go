@@ -75,6 +75,7 @@ type Question struct {
 	Title string `json:"title" bson:"title"`
 	Detail string `json:"detail" bson:"detail"`
 	Image []string `json:"image" bson:"image"` // 質問内に挿入する画像のパス
+	CommunityId primitive.ObjectID `json:"communityId" bson:"communityId"` // Community ObjectID
 	Questioner primitive.ObjectID `json:"questioner" bson:"questioner"` // User ObjectID
 	Like []primitive.ObjectID `json:"like" bson:"like"` // USer.ObjectID
 	Priority primitive.ObjectID `json:"priority" bson:"priority"` // 緊急 or なるはや or まったり 等
