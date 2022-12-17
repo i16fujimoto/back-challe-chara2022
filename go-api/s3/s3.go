@@ -103,17 +103,17 @@ func Download(s3_download *s3.S3, downloadKey *s3.GetObjectInput)([]byte, error)
 }
 
 
-func GetPutObjectInput(bucketName string, key string, imageFile *os.File) *s3.PutObjectInput {
+func GetPutObjectInput(bucketName string, key string, body []byte) *s3.PutObjectInput {
 	return &s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:	aws.String(key),	
-		Body: 	imageFile,
+		Body: 	bytes.NewReader(body),
 	}
 }
 
 
 // S3にファイルをアップロード
-func upload(s3_upload *s3.S3, params *s3.PutObjectInput) error {
+func Upload(s3_upload *s3.S3, params *s3.PutObjectInput) error {
 
 	_, err := s3_upload.PutObject(params)
 	if err != nil {

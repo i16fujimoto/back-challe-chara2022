@@ -3,18 +3,20 @@ package question_controller
 import (
 	"back-challe-chara2022/entity/request_entity/body"
 	"back-challe-chara2022/db"
-	// "back-challe-chara2022/entity/db_entity"
+	"back-challe-chara2022/entity/db_entity"
+	"back-challe-chara2022/s3"
 
 	"net/http"
 	"fmt"
 	"context"
+	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"github.com/gin-gonic/gin"
-	// jwt "github.com/appleboy/gin-jwt/v2"
+	jwt "github.com/appleboy/gin-jwt/v2"
 )
 
 type QuestionController struct {}
@@ -192,3 +194,81 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 	return
 }
 
+// POST: /question
+// 質問を登録するAPI
+func (qc QuestionController) PostQuestion(c *gin.Context) {
+	var err error
+
+	// JWTよりuserIdの取得
+	claims := jwt.ExtractClaims(c)
+	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
+	fmt.Println(userId) // debug message
+	
+	// Bodyを受け取る
+	var request body.PostQuestionBody
+	if err = c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	questionId := primitive.NewObjectID() // 質問ID
+
+	// データの変換
+	communityId, _ := primitive.ObjectIDFromHex(request.CommunityId)
+	priorityId, _ := primitive.ObjectIDFromHex(request.Priority)
+	statusId, _ := primitive.ObjectIDFromHex(request.Status)
+
+	// 画像のアップロード
+	var urls []string
+	for idx, obj := range request.Image {
+		var bucketName string = "static"
+		var key string = "/" + questionId.Hex() + "_" + strconv.Itoa(idx) + ".png"
+		urls = append(urls, bucketName + key)
+		// S3インスタンスの作成
+		s3_question, _ := s3.NewS3()
+		// 画像のアップロード
+		err = s3.Upload(s3_question, s3.GetPutObjectInput(bucketName, key, obj))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+
+	// 質問を登録
+	questionCollection := db.MongoClient.Database("insertDB").Collection("questions")
+	// 登録データ
+	docQuestion := &db_entity.Question{
+		Id: questionId,
+		Title: request.Title,
+		Detail: request.Detail,
+		Image: urls,
+		CommunityId: communityId,
+		Questioner: userId,
+		Like: []primitive.ObjectID{},
+		Priority: priorityId, 
+		Status: statusId, 
+		Category: request.Category,
+		Answer: []db_entity.Answer{},
+	}
+	_, err = questionCollection.InsertOne(context.TODO(), docQuestion) // ここでMarshalBSON()される
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+    }
+
+	// Response
+	c.JSON(http.StatusOK, gin.H{
+		"questionId": questionId,
+	})
+	return 
+
+}
