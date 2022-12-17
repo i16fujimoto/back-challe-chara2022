@@ -227,18 +227,58 @@ func main() {
 		fmt.Println("Successfully inserting communications")
 	}
 
-	// categoryCollection init
-	categoryCollection := db.MongoClient.Database("insertDB").Collection("categories")
-	docCategory := &db_entity.Category {
-		Id: primitive.NewObjectID(),
-		CategoryName: "環境構築",
+	// statusCollection init
+	statusCollection := db.MongoClient.Database("insertDB").Collection("statuses")
+	answerWaitId := primitive.NewObjectID()
+	numariId := primitive.NewObjectID()
+	finishId := primitive.NewObjectID()
+	docStatus := []interface{}{
+		&db_entity.Status {
+			Id: answerWaitId,
+			StatusName: "回答募集中",
+		},
+		&db_entity.Status {
+			Id: numariId,
+			StatusName: "ぬまり中",
+		},
+		&db_entity.Status {
+			Id: finishId,
+			StatusName: "解決済み",
+		},
 	}
-	_, err78 := categoryCollection.InsertOne(context.TODO(), docCategory) // ここでMarshalBSON()される
+	_, err78 := statusCollection.InsertMany(context.TODO(), docStatus) // ここでMarshalBSON()される
 	if err78 != nil {
-		fmt.Println("Error inserting category")
+		fmt.Println("Error inserting Status")
         panic(err78)
     } else {
-		fmt.Println("Successfully inserting categories")
+		fmt.Println("Successfully inserting Statuses")
+	}
+
+	// priorityCollection init
+	priorityCollection := db.MongoClient.Database("insertDB").Collection("priorities")
+	urgentId := primitive.NewObjectID()
+	slowId := primitive.NewObjectID()
+	moreSlowId := primitive.NewObjectID()
+	docPriority := []interface{}{
+		&db_entity.Priority {
+			Id: urgentId,
+			PriorityName: "緊急！",
+		},
+		&db_entity.Priority {
+			Id: slowId,
+			PriorityName: "なるはや",
+		},
+		&db_entity.Priority {
+			Id: moreSlowId,
+			PriorityName: "まったり",
+		},
+	}
+	_, err89 := priorityCollection.InsertMany(context.TODO(), docPriority) // ここでMarshalBSON()される
+	if err89 != nil {
+		fmt.Println("Error inserting Priority")
+        panic(err89)
+    } else {
+		fmt.Println("Successfully inserting Priorities")
 	}
 
 	// questionCollection init
@@ -251,9 +291,9 @@ func main() {
 			Image: []string{"static/icon.jpg", "static/test.png"},
 			Questioner: docUser.UserId,
 			Like: []primitive.ObjectID{docUser.UserId},
-			Priority: "緊急", 
-			Status: "回答募集中", 
-			Category: []primitive.ObjectID{docCategory.Id},
+			Priority: urgentId, 
+			Status: answerWaitId, 
+			Category: []string{"環境構築", "pythonがまずわからん"},
 			Answer: []db_entity.Answer {
 				db_entity.Answer {
 					Id: primitive.NewObjectID(),
@@ -271,9 +311,9 @@ func main() {
 			Image: []string{"static/icon.jpg", "static/test.png"},
 			Questioner: docUser.UserId,
 			Like: []primitive.ObjectID{docUser.UserId},
-			Priority: "緊急", 
-			Status: "回答募集中", 
-			Category: []primitive.ObjectID{docCategory.Id},
+			Priority: moreSlowId, 
+			Status: numariId, 
+			Category: []string{"環境構築", "Golangがまずわからん"},
 			Answer: []db_entity.Answer {
 				db_entity.Answer {
 					Id: primitive.NewObjectID(),

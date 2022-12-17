@@ -32,22 +32,41 @@ func (a *Answer) MarshalBSON() ([]byte, error) {
     return bson.Marshal((*my)(a))
 }
 
-type Category struct {
+type Status struct {
 	Id primitive.ObjectID `json:"id" bson:"_id"`
-	CategoryName string `json:"categoryName" bson:"categoryName"`
+	StatusName string `json:"statusName" bson:"statusName"`
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`
 	DeletedAt  *time.Time `json:"deletedAt" bson:"deletedAt"`
 }
 
 // Auto Create CreatedAt, UpdatedAt
-func (c *Category) MarshalBSON() ([]byte, error) {
+func (c *Status) MarshalBSON() ([]byte, error) {
     if c.CreatedAt.IsZero() {
         c.CreatedAt = time.Now()
     }
     c.UpdatedAt = time.Now()
     
-    type my Category
+    type my Status
+    return bson.Marshal((*my)(c))
+}
+
+type Priority struct {
+	Id primitive.ObjectID `json:"id" bson:"_id"`
+	PriorityName string `json:"statusName" bson:"statusName"`
+	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`
+	DeletedAt  *time.Time `json:"deletedAt" bson:"deletedAt"`
+}
+
+// Auto Create CreatedAt, UpdatedAt
+func (c *Priority) MarshalBSON() ([]byte, error) {
+    if c.CreatedAt.IsZero() {
+        c.CreatedAt = time.Now()
+    }
+    c.UpdatedAt = time.Now()
+    
+    type my Priority
     return bson.Marshal((*my)(c))
 }
 
@@ -58,9 +77,9 @@ type Question struct {
 	Image []string `json:"image" bson:"image"` // 質問内に挿入する画像のパス
 	Questioner primitive.ObjectID `json:"questioner" bson:"questioner"` // User ObjectID
 	Like []primitive.ObjectID `json:"like" bson:"like"` // USer.ObjectID
-	Priority string `json:"priority" bson:"priority"` // 緊急 or なるはや or まったり 等
-	Status string `json:"status" bson:"status"` // 回答募集中 or 沼り中 or 解決済 等
-	Category []primitive.ObjectID `json:"category" bson:"category"` // カテゴリーテーブルのカテゴリー名を挿入 Category.ObjectID
+	Priority primitive.ObjectID `json:"priority" bson:"priority"` // 緊急 or なるはや or まったり 等
+	Status primitive.ObjectID `json:"status" bson:"status"` // 回答募集中 or 沼り中 or 解決済 等
+	Category []string `json:"category" bson:"category"`
 	// Language string `json:"language" bson:"language"` // 言語テーブル内の言語名を挿入
 	Answer []Answer `json:"answer" bson:"answer"` // SubCollection
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
