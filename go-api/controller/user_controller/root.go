@@ -32,7 +32,9 @@ type UserIconResponse struct {
 }
 
 type UserCommunityResponse struct {
-	UserCommunity []string `json:"userCommunity"`
+	CommunityId primitive.ObjectID `json:"communityId"`
+	CommunityName string `json:"communityName"`
+	Icon []byte `json:"icon"`
 }
 
 type UserStatusResponse struct {
@@ -201,7 +203,7 @@ func (uc UserController) GetUserCommunity(c *gin.Context) {
 		return
 	}
 
-	var response UserCommunityResponse
+	var response []UserCommunityResponse
 
 	for _, doc := range d_tmp.CommunityId {
 
@@ -211,7 +213,7 @@ func (uc UserController) GetUserCommunity(c *gin.Context) {
  		filterCommunity := bson.M{"_id": id}
 		// query the community collection
 		communityCollection := db.MongoClient.Database("insertDB").Collection("communities")
-		err = communityCollection.FindOne(context.TODO(), filterCommunity, options.FindOne().SetProjection(bson.M{"communityName": 1, "_id": 0})).Decode(&docCommunity)
+		err = communityCollection.FindOne(context.TODO(), filterCommunity, options.FindOne().SetProjection(bson.M{"communityName": 1, "icon": 1, "_id": 0})).Decode(&docCommunity)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
 			return
@@ -224,12 +226,41 @@ func (uc UserController) GetUserCommunity(c *gin.Context) {
 			})
 			return
 		}
-		fmt.Println(docCommunity["communityName"].(string))
-		response.UserCommunity = append(response.UserCommunity, docCommunity["communityName"].(string))
+		
+		// 画像の処理
+		var url string = docCommunity["icon"].(string)
+		var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+		var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+		// S3インスタンスを作成
+		s3Instance, err := s3.NewS3()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 503,
+				"message": "Service Unavailable",
+			})
+		}
+		// S3から画像ファイルのダウンロード
+		downloadKey := s3.GetObjectInput(bucketName, key)
+		buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 404,
+				"message": err.Error(),
+			})
+		}
+
+		// Responseデータに追加
+		response = append(response, UserCommunityResponse{
+			CommunityId: id,
+			CommunityName: docCommunity["communityName"].(string),
+			Icon: buf,
+		})
 
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"communities": response,
+	})
 	return
 
 

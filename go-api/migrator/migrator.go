@@ -56,7 +56,7 @@ func main() {
 		CommunityId: communityId,
 		CommunityName: "test",
 		Member: user_id_array,
-		Icon: "icon.jpg",
+		Icon: "static/icon.jpg",
 	}
 
 	_, err3 := CommunityCollection.InsertOne(context.TODO(), docCom) // ここでMarshalBSON()される
