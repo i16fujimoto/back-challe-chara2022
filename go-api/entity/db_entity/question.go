@@ -53,7 +53,7 @@ func (c *Status) MarshalBSON() ([]byte, error) {
 
 type Priority struct {
 	Id primitive.ObjectID `json:"id" bson:"_id"`
-	PriorityName string `json:"statusName" bson:"statusName"`
+	PriorityName string `json:"priorityName" bson:"priorityName"`
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`
 	DeletedAt  *time.Time `json:"deletedAt" bson:"deletedAt"`

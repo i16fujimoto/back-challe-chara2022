@@ -313,7 +313,7 @@ func (bc BearController) GetHistory(c *gin.Context) {
 
 	var historyArray []History = []History{}
 	for _, r := range results {
-		history := History {
+		history := History{
 			Text: r["text"].(string),
 			Date:  r["createdAt"].(primitive.DateTime),
 		}

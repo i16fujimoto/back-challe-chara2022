@@ -4,6 +4,7 @@ import (
 	"back-challe-chara2022/controller/bear_controller"
 	"back-challe-chara2022/controller/user_controller"
 	"back-challe-chara2022/controller/login_controller"
+	"back-challe-chara2022/controller/question_controller"
 	
 	"os"
 	"net/http"
@@ -67,25 +68,35 @@ func setRouter() *gin.Engine {
 	auth.GET("/refresh_token", authMiddleware.(*jwt.GinJWTMiddleware).RefreshHandler)
 	auth.Use(authMiddleware.(*jwt.GinJWTMiddleware).MiddlewareFunc())
 	{	
-		bear_group := auth.Group("/bear")
+		bearGroup := auth.Group("/bear")
 		{
 			ctrl := bear_controller.BearController{}
 			// 熊の返答を返す
-			bear_group.POST("/", ctrl.PostResponse) // required login user
+			bearGroup.POST("/", ctrl.PostResponse) // required login user
 			// クマとの対話履歴を返す
-			bear_group.GET("/history", ctrl.GetHistory)
+			bearGroup.GET("/history", ctrl.GetHistory)
 		}
-		user_group := auth.Group("/user")
+
+		userGroup := auth.Group("/user")
 		{
 			ctrl := user_controller.UserController{}
 			// user情報を返す
-			user_group.GET("/", ctrl.GetUser)
+			userGroup.GET("/", ctrl.GetUser)
 			// userのステータスを更新
-			user_group.PATCH("/status", ctrl.PatchUserStatus)
+			userGroup.PATCH("/status", ctrl.PatchUserStatus)
 			// userの所属するコミュニティを全て取得
-			user_group.GET("/community", ctrl.GetUserCommunity)
+			userGroup.GET("/community", ctrl.GetUserCommunity)
 			// userのアイコンを取得
-			user_group.GET("/icon", ctrl.GetUserIcon)	
+			userGroup.GET("/icon", ctrl.GetUserIcon)	
+		}
+
+		questionGroup := auth.Group("/question")
+		{
+			ctrl := question_controller.QuestionController{}
+			// 優先度一覧を取得
+			questionGroup.GET("/priority", ctrl.GetPriority)
+			// ステータス一覧を取得
+			questionGroup.GET("/status", ctrl.GetStatus)
 		}
 	}
 	return r
