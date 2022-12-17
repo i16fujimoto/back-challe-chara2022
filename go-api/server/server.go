@@ -29,6 +29,7 @@ func setRouter() *gin.Engine {
 	r := gin.Default()
 
 	// ミドルウェアの設定
+	// CORSミドルウェア
 	r.Use(cors.New(cors.Config{
 		// アクセスを許可したいアクセス元
 		AllowOrigins: []string{
@@ -59,6 +60,8 @@ func setRouter() *gin.Engine {
 		// preflightリクエストの結果をキャッシュする時間
 		MaxAge: 24 * time.Hour,
 	  }))
+	
+	
 
 	//ルーティング
 	bear_group := r.Group("bear")
