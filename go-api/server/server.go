@@ -5,15 +5,22 @@ import (
 	"back-challe-chara2022/controller/user_controller"
 	"back-challe-chara2022/controller/login_controller"
 	
-	"time"
 	"os"
+	"net/http"
 	
 	"github.com/gin-gonic/gin"
-	"github.com/gin-contrib/cors"
+	"github.com/joho/godotenv"
+	jwt "github.com/appleboy/gin-jwt/v2"
 )
 
 // 初期化
 func Init() {
+
+	// 環境変数の読み込み
+	err := godotenv.Load(".env")
+	if err != nil {
+		panic(err)
+	}
 
 	// ルーティング
 	r := setRouter()
@@ -29,64 +36,57 @@ func setRouter() *gin.Engine {
 	r := gin.Default()
 
 	// ミドルウェアの設定
-	r.Use(cors.New(cors.Config{
-		// アクセスを許可したいアクセス元
-		AllowOrigins: []string{
-			"http://localhost", 
-			"http://localhost:3000",
-			"https://qmatta.vercel.app",
-		},
-		// アクセスを許可したいHTTPメソッド
-		AllowMethods: []string{
-			"POST",
-			"GET",
-			"PATCH",
-			"DELETE",
-			"OPTIONS",
-		},
-		// 許可したいHTTPリクエストヘッダ
-		AllowHeaders: []string{
-			"Access-Control-Allow-Credentials",
-			"Access-Control-Allow-Origin",
-			"Access-Control-Allow-Headers",
-			"Content-Type",
-			"Content-Length",
-			"Accept-Encoding",
-			"Authorization",
-		},
-		// cookieなどの情報を必要とするかどうか
-		AllowCredentials: true,
-		// preflightリクエストの結果をキャッシュする時間
-		MaxAge: 24 * time.Hour,
-	  }))
+
+	// CORSミドルウェアの定義
+	r.Use(GetCORSMiddleware())
+	
+	// JWT認証ミドルウェアの定義
+	var key string = os.Getenv("SECRET_KEY")
+	authMiddleware, err := GetJWTAuthentication(key)
+	if err != nil {
+		panic(err)	
+	}
 
 	//ルーティング
-	bear_group := r.Group("bear")
-	{
-		ctrl := bear_controller.BearController{}
-		// 熊の返答を返す
-		bear_group.GET("/", ctrl.GetNotLoginResponse) // not required login user 
-		bear_group.POST(":userId", ctrl.PostResponse) // required login user
-		// クマとの対話履歴を返す
-		bear_group.GET("history/:userId", ctrl.GetHistory)
-	}
-
-	user_group := r.Group("user")
-	{
-		ctrl := user_controller.UserController{}
-		// userのステータスを更新
-		user_group.PATCH("status/:userId", ctrl.PatchUserStatus)
-		// userの所属するコミュニティを全て取得
-		user_group.GET("community/:userId", ctrl.GetUserCommunity)
-		// userのアイコンを取得
-		user_group.GET("icon/:userId", ctrl.GetUserIcon)	
-	}
 
 	// user登録
 	r.POST("/signup", login_controller.CreateUser)
 	// ユーザ認証
-	r.POST("/login", login_controller.LoginUser)
+	r.POST("/login", authMiddleware.(*jwt.GinJWTMiddleware).LoginHandler)
 
+	r.NoRoute(authMiddleware.(*jwt.GinJWTMiddleware).MiddlewareFunc(), func(c *gin.Context) {
+		c.JSON(404, gin.H{"code": http.StatusNotFound, "message": "Page not found"})
+	})
+
+	// ログインなしでクマを利用する
+	notLogin := r.Group("/bear_notlogin")
+	notLogin.GET("", bear_controller.BearController{}.GetNotLoginResponse)
+
+	// JWT認証のミドルウェアを通すAPIを設定
+	auth := r.Group("/")
+	auth.GET("/refresh_token", authMiddleware.(*jwt.GinJWTMiddleware).RefreshHandler)
+	auth.Use(authMiddleware.(*jwt.GinJWTMiddleware).MiddlewareFunc())
+	{	
+		bear_group := auth.Group("/bear")
+		{
+			ctrl := bear_controller.BearController{}
+			// 熊の返答を返す
+			bear_group.POST("/", ctrl.PostResponse) // required login user
+			// クマとの対話履歴を返す
+			bear_group.GET("/history", ctrl.GetHistory)
+		}
+		user_group := auth.Group("/user")
+		{
+			ctrl := user_controller.UserController{}
+			// user情報を返す
+			user_group.GET("/", ctrl.GetUser)
+			// userのステータスを更新
+			user_group.PATCH("/status", ctrl.PatchUserStatus)
+			// userの所属するコミュニティを全て取得
+			user_group.GET("/community", ctrl.GetUserCommunity)
+			// userのアイコンを取得
+			user_group.GET("/icon", ctrl.GetUserIcon)	
+		}
+	}
 	return r
 }
-
