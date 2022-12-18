@@ -72,7 +72,7 @@ func setRouter() *gin.Engine {
 		{
 			ctrl := bear_controller.BearController{}
 			// 熊の返答を返す
-			bearGroup.POST("/", ctrl.PostResponse) // required login user
+			bearGroup.POST("", ctrl.PostResponse) // required login user
 			// クマとの対話履歴を返す
 			bearGroup.GET("/history", ctrl.GetHistory)
 		}
@@ -81,7 +81,7 @@ func setRouter() *gin.Engine {
 		{
 			ctrl := user_controller.UserController{}
 			// user情報を返す
-			userGroup.GET("/", ctrl.GetUser)
+			userGroup.GET("", ctrl.GetUser)
 			// userのステータスを更新
 			userGroup.PATCH("/status", ctrl.PatchUserStatus)
 			// userの所属するコミュニティを全て取得
@@ -94,9 +94,11 @@ func setRouter() *gin.Engine {
 		{
 			ctrl := question_controller.QuestionController{}
 			// 質問の一覧を取得
-			questionGroup.GET("/", ctrl.GetQuestions)
+			questionGroup.GET("", ctrl.GetQuestions)
 			// 質問の登録
-			questionGroup.POST("/", ctrl.PostQuestion)
+			questionGroup.POST("", ctrl.PostQuestion)
+			// 質問の取得
+			questionGroup.GET(":questionId", ctrl.GetQuestion)
 			// 優先度一覧を取得
 			questionGroup.GET("/priority", ctrl.GetPriority)
 			// ステータス一覧を取得
