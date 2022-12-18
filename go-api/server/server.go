@@ -61,7 +61,7 @@ func setRouter() *gin.Engine {
 
 	// ログインなしでクマを利用する
 	notLogin := r.Group("/bear_notlogin")
-	notLogin.GET("", bear_controller.BearController{}.GetNotLoginResponse)
+	notLogin.POST("", bear_controller.BearController{}.PostNotLoginResponse)
 
 	// JWT認証のミドルウェアを通すAPIを設定
 	auth := r.Group("/")
@@ -94,13 +94,13 @@ func setRouter() *gin.Engine {
 		{
 			ctrl := question_controller.QuestionController{}
 			// 質問の一覧を取得
-			questionGroup.GET("", ctrl.GetQuestions)
+			questionGroup.GET(":communityId", ctrl.GetQuestions)
 			// 質問の登録
-			questionGroup.POST("", ctrl.PostQuestion)
+			questionGroup.POST(":communityId", ctrl.PostQuestion)
 			// 質問の取得
-			questionGroup.GET(":questionId", ctrl.GetQuestion)
+			questionGroup.GET("answer/:questionId", ctrl.GetQuestion)
 			// 質問に回答を追加
-			questionGroup.POST(":questionId", ctrl.PostAnswer)
+			questionGroup.POST("answer/:questionId", ctrl.PostAnswer)
 			// 優先度一覧を取得
 			questionGroup.GET("/priority", ctrl.GetPriority)
 			// ステータス一覧を取得

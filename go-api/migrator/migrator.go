@@ -51,7 +51,7 @@ func main() {
 	// communityCollection init
 	CommunityCollection := db.MongoClient.Database("insertDB").Collection("communities")
 	var user_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
-	communityId	:= primitive.NewObjectID()
+	communityId, _	:= primitive.ObjectIDFromHex("639e1e8803161570622d5263")
 	docCom := &db_entity.Community{
 		CommunityId: communityId,
 		CommunityName: "test",

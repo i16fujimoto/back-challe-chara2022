@@ -35,8 +35,8 @@ type BearHistoryResponse struct {
 	Histories []History `json:"histories"`
 }
 
-// GET: /bear
-func (bc BearController) GetNotLoginResponse(c *gin.Context) {
+// Post: /bear
+func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	
 	var request body.SendBearBody
 	// bodyのjsonデータを構造体にBind

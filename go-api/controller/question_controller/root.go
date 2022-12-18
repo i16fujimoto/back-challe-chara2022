@@ -37,6 +37,8 @@ type Question struct {
 	QuestionId primitive.ObjectID `json:"questionId"`
 	Title string `json:"title"`
 	Category []string `json:"category"`
+	Status string `json:"status"`
+	Priority string `json:"priority"`
 	Questioner primitive.ObjectID `json:"questioner"`
 	NumLikes int `json:"numLikes"`
 }
@@ -152,26 +154,17 @@ func (qc QuestionController) GetStatus(c *gin.Context) {
 	return
 }
 
-// GET: /question
+// GET: /question:<ObjectId: communityId>
 // 質問一覧を返すAPI
 func (qc QuestionController) GetQuestions(c *gin.Context) {
 	
 	var err error
 
-	var request body.GetQuestionsBody
-	if err = c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest,gin.H{
-			"code": http.StatusBadRequest,
-			"message": err.Error(),
-		})
-		return
-	}
-
 	var cursor *mongo.Cursor
 	questionCollection := db.MongoClient.Database("insertDB").Collection("questions")
-	opts := options.Find().SetProjection(bson.M{"_id": 1, "title": 1, "category": 1, "questioner": 1, "like": 1, "createdAt": 1}).
+	opts := options.Find().SetProjection(bson.M{"_id": 1, "title": 1, "category": 1, "priority": 1, "status": 1, "questioner": 1, "like": 1, "createdAt": 1}).
 		SetSort(bson.D{{"createdAt", -1}})
-	communityId, _ := primitive.ObjectIDFromHex(request.CommunityId)
+	communityId, _ := primitive.ObjectIDFromHex(c.Param("communityId"))
 	fmt.Println(communityId)
 	cursor, err = questionCollection.Find(context.TODO(), bson.M{"communityId": communityId}, opts)
 	if err != nil {
@@ -181,6 +174,7 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 		})
 		return
 	}
+
 	// 検索結果をresultsにデコード
 	var results []bson.M
 	if err = cursor.All(context.TODO(), &results); err != nil {
@@ -203,13 +197,45 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 		// Likeの数
 		var cntLikes int = len(r["like"].(primitive.A))
 
+		// ステータスを取得
+		statusId := r["status"].(primitive.ObjectID)
+		filterStatus := bson.M{"_id": statusId}
+		var docStatus bson.M
+		statusCollection := db.MongoClient.Database("insertDB").Collection("statuses")
+		if err := statusCollection.FindOne(context.TODO(), filterStatus,
+			options.FindOne().SetProjection(bson.M{"_id": 0, "statusName": 1})).Decode(&docStatus); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		// 優先度を取得
+		priorityId := r["priority"].(primitive.ObjectID)
+		filterPriority := bson.M{"_id": priorityId}
+		var docPriority bson.M
+		priorityCollection := db.MongoClient.Database("insertDB").Collection("priorities")
+		if err := priorityCollection.FindOne(context.TODO(), filterPriority,
+			options.FindOne().SetProjection(bson.M{"_id": 0, "priorityName": 1})).Decode(&docPriority); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+
 		question := Question{
 			QuestionId: r["_id"].(primitive.ObjectID),
 			Title: r["title"].(string),
 			Category: category,
+			Priority: docPriority["priorityName"].(string),
+			Status: docStatus["statusName"].(string),
 			Questioner: r["questioner"].(primitive.ObjectID),
 			NumLikes: cntLikes,
 		}
+
+
 		questions = append(questions, question)
 	}
 
@@ -220,7 +246,7 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 	return
 }
 
-// POST: /question
+// POST: /question/<ObjectId: communityId>
 // 質問を登録するAPI
 func (qc QuestionController) PostQuestion(c *gin.Context) {
 	var err error
@@ -243,7 +269,7 @@ func (qc QuestionController) PostQuestion(c *gin.Context) {
 	questionId := primitive.NewObjectID() // 質問ID
 
 	// データの変換
-	communityId, _ := primitive.ObjectIDFromHex(request.CommunityId)
+	communityId, _ := primitive.ObjectIDFromHex(c.Param("communityId"))
 	priorityId, _ := primitive.ObjectIDFromHex(request.Priority)
 	statusId, _ := primitive.ObjectIDFromHex(request.Status)
 
@@ -546,7 +572,7 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 	// Response
 	c.JSON(http.StatusOK, gin.H{
 		"question": question,
-		"answer": answers,
+		"answers": answers,
 	})
 	return
 
@@ -554,6 +580,7 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 
 // POST: /qustion/<objectID:questionId>
 // 質問に対する回答を追加するAPI
+// タグをうまく使うことでUpdateOneで対応可能
 func (qc QuestionController) PostAnswer(c *gin.Context) {
 	var err error
 

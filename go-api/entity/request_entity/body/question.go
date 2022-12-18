@@ -1,12 +1,6 @@
 package body
 
-type GetQuestionsBody struct {
-	CommunityId string `json:"communityId" binding:"required"`
-}
-
 type PostQuestionBody struct {
-	UserName string `json:"userName" binding:"required"`
-	CommunityId string `json:"community binding:"required"`
 	Title string `json:"title" binding:"required"`
 	Detail string `json:"detail" binding:"required"`
 	Image [][]byte `json:"image"`

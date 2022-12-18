@@ -36,3 +36,6 @@ img_dir
 
 # chatGPT
 chatgptTest.go
+
+# nlp
+nlpSentiment.go
