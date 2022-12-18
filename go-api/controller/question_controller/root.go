@@ -49,7 +49,7 @@ type Like struct {
 }
 
 type QuestionResponse struct {
-	Questioner primitive.ObjectID `json:"questioner"`
+	Questioner string `json:"questioner"`
 	Title string `json:"title"`
 	Details string `json:"details"`
 	Image [][]byte `json:"image"`
@@ -61,7 +61,7 @@ type QuestionResponse struct {
 
 // AnswerResponseは配列で返す
 type AnswerResponse struct {
-	Respondent primitive.ObjectID `json:"respondent"`
+	Respondent string `json:"respondent"`
 	Details string `json:"details"`
 	Image [][]byte `json:"image"`
 	Likes []Like `json:"like"`
@@ -324,7 +324,7 @@ func (qc QuestionController) PostQuestion(c *gin.Context) {
 	return 
 }
 
-// GET: /question/<ObjectId: questionId>
+// GET: /question/answer/<ObjectId: questionId>
 // 選択された質問を返すAPI
 func (qc QuestionController) GetQuestion(c *gin.Context) {
 
@@ -436,8 +436,33 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 				})
 			}
 		}
+
+		// 回答者名の取得
+		userCollection := db.MongoClient.Database("insertDB").Collection("users")
+		var docUser bson.M
+		// 検索条件
+		filterUser := bson.D{{"_id", ans.(primitive.M)["respondent"].(primitive.ObjectID)}}
+		// query the user collection
+		err = userCollection.FindOne(context.TODO(), filterUser,
+			options.FindOne().SetProjection(bson.M{"userName": 1, "_id": 0})).Decode(&docUser)
+		if err == mongo.ErrNoDocuments {
+			fmt.Printf("No document was found with the stampId")
+			c.JSON(http.StatusNotFound, gin.H{
+				"code": 404,
+				"message": "No document was found with the stampId",
+			})
+			return
+		} else if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+
+
 		answers = append(answers, AnswerResponse{
-			Respondent: ans.(primitive.M)["respondent"].(primitive.ObjectID),
+			Respondent: docUser["userName"].(string),
 			Details: ans.(primitive.M)["detail"].(string),
 			Image: bufArray,
 			Likes: likes,
@@ -557,9 +582,32 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 			Icon: buf,
 		})
 	}
+	
+	// 回答者名の取得
+	userCollection := db.MongoClient.Database("insertDB").Collection("users")
+	var docUser bson.M
+	// 検索条件
+	filterUser := bson.D{{"_id", doc["questioner"].(primitive.ObjectID)}}
+	// query the user collection
+	err = userCollection.FindOne(context.TODO(), filterUser,
+		options.FindOne().SetProjection(bson.M{"userName": 1, "_id": 0})).Decode(&docUser)
+	if err == mongo.ErrNoDocuments {
+		fmt.Printf("No document was found with the stampId")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": 404,
+			"message": "No document was found with the stampId",
+		})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
 
 	var question QuestionResponse = QuestionResponse{
-		Questioner: doc["questioner"].(primitive.ObjectID),
+		Questioner: docUser["userName"].(string),
 		Title: doc["title"].(string),
 		Details: doc["detail"].(string),
 		Image: bufArray, 
@@ -578,7 +626,7 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 
 }
 
-// POST: /qustion/<objectID:questionId>
+// POST: /qustion/answer/<objectID:questionId>
 // 質問に対する回答を追加するAPI
 // タグをうまく使うことでUpdateOneで対応可能
 func (qc QuestionController) PostAnswer(c *gin.Context) {
