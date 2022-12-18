@@ -49,7 +49,6 @@ func GetJWTAuthentication(key string)(interface{}, error) {
 			if v, ok := data.(*db_entity.User); ok {
 				return jwt.MapClaims{
 					"userId": v.UserId,	
-					"password": v.Password,
 				}
 			}
 

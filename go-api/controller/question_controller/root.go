@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"context"
 	"strconv"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -37,6 +38,30 @@ type Question struct {
 	Category []string `json:"category"`
 	Questioner primitive.ObjectID `json:"questioner"`
 	NumLikes int `json:"numLikes"`
+}
+
+type Like struct {
+	UserName string `json:"userName"`
+	Icon []byte `json:"icon"`
+}
+
+type QuestionResponse struct {
+	Questioner primitive.ObjectID `json:"questioner"`
+	Title string `json:"title"`
+	Details string `json:"details"`
+	Image [][]byte `json:"image"`
+	Category []string `json:"category"`
+	Status string `json:"status"`
+	Priority string `json:"priority"`
+	Likes []Like
+}
+
+// AnswerResponseは配列で返す
+type AnswerResponse struct {
+	Respondent primitive.ObjectID `json:"respondent"`
+	Details string `json:"details"`
+	Image [][]byte `json:"image"`
+	Likes []Like `json:"like"`
 }
 
 
@@ -270,5 +295,252 @@ func (qc QuestionController) PostQuestion(c *gin.Context) {
 		"questionId": questionId,
 	})
 	return 
+}
+
+// GET: /question/<ObjectId: questionId>
+// 選択された質問を返すAPI
+func (qc QuestionController) GetQuestion(c *gin.Context) {
+
+	// パスパラメータを取得
+	questionId, _ := primitive.ObjectIDFromHex(c.Param("questionId"))
+	
+	// 質問の取得
+	questionCollection := db.MongoClient.Database("insertDB").Collection("questions")
+	var doc bson.M // クエリ結果を格納
+	filter := bson.M{"_id": questionId}
+	err := questionCollection.FindOne(context.TODO(), filter,
+		options.FindOne().SetProjection(bson.M{"_id": 0, "questioner": 1, "title": 1, "detail": 1, "image": 1, "category": 1, "status": 1, "priority": 1, "like": 1, "answer": 1})).Decode(&doc)
+	if err == mongo.ErrNoDocuments {
+		fmt.Printf("No document was found with the questionId")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": 404,
+			"message": "No document was found with the questionId",
+		})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// 質問の全回答を取得する
+	var answers []AnswerResponse
+	for _, ans := range doc["answer"].(primitive.A) {
+		// 回答の画像の取得
+		var bufArray [][]byte
+		for _, img := range ans.(primitive.M)["image"].(primitive.A) {
+			var url string = img.(string)
+			var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+			var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+			// S3インスタンスを作成
+			s3Instance, err := s3.NewS3()
+			if err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"code": 503,
+					"message": "Service Unavailable",
+				})
+			}
+			// S3から画像ファイルのダウンロード
+			downloadKey := s3.GetObjectInput(bucketName, key)
+			buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+			if err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"code": 404,
+					"message": err.Error(),
+				})
+			}
+			bufArray = append(bufArray, buf)
+		}
+		// いいね しているユーザの取得
+		var likes []Like
+		for _, user := range ans.(primitive.M)["like"].(primitive.A) {
+			var doc bson.M
+			filter := bson.M{"_id": user}
+			userCollection := db.MongoClient.Database("insertDB").Collection("users")
+			if err := userCollection.FindOne(context.TODO(), filter, 
+				options.FindOne().SetProjection(bson.M{"_id": 0, "userName": 1, "icon": 1})).Decode(&doc); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"code": http.StatusBadRequest,
+					"message": err.Error(),
+				})
+				return
+			} else if err == mongo.ErrNoDocuments {
+				fmt.Printf("No document was found with the userId")
+				c.JSON(http.StatusNotFound, gin.H{
+					"code": 404,
+					"message": "No document was found with the userId",
+				})
+				return
+			}
+
+			// S3バケットとオブジェクトを指定
+			url := doc["icon"].(string)
+			var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+			var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+			
+			fmt.Println(bucketName, key)
+			
+			// S3インスタンスを作成
+			s3Instance, err := s3.NewS3()
+			if err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"code": 503,
+					"message": "Service Unavailable",
+				})
+			}
+
+			// S3から画像ファイルのダウンロード
+			downloadKey := s3.GetObjectInput(bucketName, key)
+			buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+			if err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"code": 404,
+					"message": err.Error(),
+				})
+			}
+			likes = append(likes, Like {
+				UserName: doc["userName"].(string),
+				Icon: buf,
+			})
+		}
+		answers = append(answers, AnswerResponse{
+			Respondent: ans.(primitive.M)["respondent"].(primitive.ObjectID),
+			Details: ans.(primitive.M)["detail"].(string),
+			Image: bufArray,
+			Likes: likes,
+		})
+	}
+
+	// 質問のカテゴリーを取得する
+	var categories []string
+	for _, category := range doc["category"].(primitive.A) {
+		categories = append(categories, category.(string))
+	}
+
+	// ステータスを取得
+	statusId := doc["status"].(primitive.ObjectID)
+	filterStatus := bson.M{"_id": statusId}
+	var docStatus bson.M
+	statusCollection := db.MongoClient.Database("insertDB").Collection("statuses")
+	if err := statusCollection.FindOne(context.TODO(), filterStatus,
+		options.FindOne().SetProjection(bson.M{"_id": 0, "statusName": 1})).Decode(&docStatus); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// 優先度を取得
+	priorityId := doc["priority"].(primitive.ObjectID)
+	filterPriority := bson.M{"_id": priorityId}
+	var docPriority bson.M
+	priorityCollection := db.MongoClient.Database("insertDB").Collection("priorities")
+	if err := priorityCollection.FindOne(context.TODO(), filterPriority,
+		options.FindOne().SetProjection(bson.M{"_id": 0, "priorityName": 1})).Decode(&docPriority); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// 質問の画像の取得
+	var bufArray [][]byte
+	for _, img := range doc["image"].(primitive.A) {
+		var url string = img.(string)
+		var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+		var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+		// S3インスタンスを作成
+		s3Instance, err := s3.NewS3()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 503,
+				"message": "Service Unavailable",
+			})
+		}
+		// S3から画像ファイルのダウンロード
+		downloadKey := s3.GetObjectInput(bucketName, key)
+		buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 404,
+				"message": err.Error(),
+			})
+		}
+		bufArray = append(bufArray, buf)
+	}
+	// いいね しているユーザの取得
+	var likes []Like
+	for _, user := range doc["like"].(primitive.A) {
+		var doc bson.M
+		filter := bson.M{"_id": user}
+		userCollection := db.MongoClient.Database("insertDB").Collection("users")
+		if err := userCollection.FindOne(context.TODO(), filter, 
+			options.FindOne().SetProjection(bson.M{"_id": 0, "userName": 1, "icon": 1})).Decode(&doc); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		} else if err == mongo.ErrNoDocuments {
+			fmt.Printf("No document was found with the userId")
+			c.JSON(http.StatusNotFound, gin.H{
+				"code": 404,
+				"message": "No document was found with the userId",
+			})
+			return
+		}
+
+		// S3バケットとオブジェクトを指定
+		url := doc["icon"].(string)
+		var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+		var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+		
+		fmt.Println(bucketName, key)
+		
+		// S3インスタンスを作成
+		s3Instance, err := s3.NewS3()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 503,
+				"message": "Service Unavailable",
+			})
+		}
+
+		// S3から画像ファイルのダウンロード
+		downloadKey := s3.GetObjectInput(bucketName, key)
+		buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 404,
+				"message": err.Error(),
+			})
+		}
+		likes = append(likes, Like {
+			UserName: doc["userName"].(string),
+			Icon: buf,
+		})
+	}
+
+	var question QuestionResponse = QuestionResponse{
+		Questioner: doc["questioner"].(primitive.ObjectID),
+		Title: doc["title"].(string),
+		Details: doc["detail"].(string),
+		Image: bufArray, 
+		Category: categories, 
+		Status: docStatus["statusName"].(string), 
+		Priority: docPriority["priorityName"].(string), 
+		Likes: likes,
+	}
+
+	// Response
+	c.JSON(http.StatusOK, gin.H{
+		"question": question,
+		"answer": answers,
+	})
+	return
 
 }
