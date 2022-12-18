@@ -11,6 +11,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -330,80 +331,84 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 	for _, ans := range doc["answer"].(primitive.A) {
 		// 回答の画像の取得
 		var bufArray [][]byte
-		for _, img := range ans.(primitive.M)["image"].(primitive.A) {
-			var url string = img.(string)
-			var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
-			var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
-			// S3インスタンスを作成
-			s3Instance, err := s3.NewS3()
-			if err != nil {
-				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"code": 503,
-					"message": "Service Unavailable",
-				})
+		if ans.(primitive.M)["image"] != nil {
+			for _, img := range ans.(primitive.M)["image"].(primitive.A) {
+				var url string = img.(string)
+				var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+				var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+				// S3インスタンスを作成
+				s3Instance, err := s3.NewS3()
+				if err != nil {
+					c.JSON(http.StatusServiceUnavailable, gin.H{
+						"code": 503,
+						"message": "Service Unavailable",
+					})
+				}
+				// S3から画像ファイルのダウンロード
+				downloadKey := s3.GetObjectInput(bucketName, key)
+				buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+				if err != nil {
+					c.JSON(http.StatusServiceUnavailable, gin.H{
+						"code": 404,
+						"message": err.Error(),
+					})
+				}
+				bufArray = append(bufArray, buf)
 			}
-			// S3から画像ファイルのダウンロード
-			downloadKey := s3.GetObjectInput(bucketName, key)
-			buf, err := s3.Download(s3Instance, downloadKey) //[]byte
-			if err != nil {
-				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"code": 404,
-					"message": err.Error(),
-				})
-			}
-			bufArray = append(bufArray, buf)
 		}
 		// いいね しているユーザの取得
 		var likes []Like
-		for _, user := range ans.(primitive.M)["like"].(primitive.A) {
-			var doc bson.M
-			filter := bson.M{"_id": user}
-			userCollection := db.MongoClient.Database("insertDB").Collection("users")
-			if err := userCollection.FindOne(context.TODO(), filter, 
-				options.FindOne().SetProjection(bson.M{"_id": 0, "userName": 1, "icon": 1})).Decode(&doc); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"code": http.StatusBadRequest,
-					"message": err.Error(),
-				})
-				return
-			} else if err == mongo.ErrNoDocuments {
-				fmt.Printf("No document was found with the userId")
-				c.JSON(http.StatusNotFound, gin.H{
-					"code": 404,
-					"message": "No document was found with the userId",
-				})
-				return
-			}
+		if ans.(primitive.M)["like"] != nil {
+			for _, user := range ans.(primitive.M)["like"].(primitive.A) {
+				var doc bson.M
+				filter := bson.M{"_id": user}
+				userCollection := db.MongoClient.Database("insertDB").Collection("users")
+				if err := userCollection.FindOne(context.TODO(), filter, 
+					options.FindOne().SetProjection(bson.M{"_id": 0, "userName": 1, "icon": 1})).Decode(&doc); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{
+						"code": http.StatusBadRequest,
+						"message": err.Error(),
+					})
+					return
+				} else if err == mongo.ErrNoDocuments {
+					fmt.Printf("No document was found with the userId")
+					c.JSON(http.StatusNotFound, gin.H{
+						"code": 404,
+						"message": "No document was found with the userId",
+					})
+					return
+				}
 
-			// S3バケットとオブジェクトを指定
-			url := doc["icon"].(string)
-			var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
-			var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
-			
-			fmt.Println(bucketName, key)
-			
-			// S3インスタンスを作成
-			s3Instance, err := s3.NewS3()
-			if err != nil {
-				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"code": 503,
-					"message": "Service Unavailable",
-				})
-			}
+				// S3バケットとオブジェクトを指定
+				url := doc["icon"].(string)
+				var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+				var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+				
+				fmt.Println(bucketName, key)
+				
+				// S3インスタンスを作成
+				s3Instance, err := s3.NewS3()
+				if err != nil {
+					c.JSON(http.StatusServiceUnavailable, gin.H{
+						"code": 503,
+						"message": "Service Unavailable",
+					})
+				}
 
-			// S3から画像ファイルのダウンロード
-			downloadKey := s3.GetObjectInput(bucketName, key)
-			buf, err := s3.Download(s3Instance, downloadKey) //[]byte
-			if err != nil {
-				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"code": 404,
-					"message": err.Error(),
+				// S3から画像ファイルのダウンロード
+				downloadKey := s3.GetObjectInput(bucketName, key)
+				buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+				if err != nil {
+					c.JSON(http.StatusServiceUnavailable, gin.H{
+						"code": 404,
+						"message": err.Error(),
+					})
+				}
+				likes = append(likes, Like {
+					UserName: doc["userName"].(string),
+					Icon: buf,
 				})
 			}
-			likes = append(likes, Like {
-				UserName: doc["userName"].(string),
-				Icon: buf,
-			})
 		}
 		answers = append(answers, AnswerResponse{
 			Respondent: ans.(primitive.M)["respondent"].(primitive.ObjectID),
@@ -449,28 +454,30 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 
 	// 質問の画像の取得
 	var bufArray [][]byte
-	for _, img := range doc["image"].(primitive.A) {
-		var url string = img.(string)
-		var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
-		var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
-		// S3インスタンスを作成
-		s3Instance, err := s3.NewS3()
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"code": 503,
-				"message": "Service Unavailable",
-			})
+	if doc["image"] != nil {
+		for _, img := range doc["image"].(primitive.A) {
+			var url string = img.(string)
+			var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+			var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+			// S3インスタンスを作成
+			s3Instance, err := s3.NewS3()
+			if err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"code": 503,
+					"message": "Service Unavailable",
+				})
+			}
+			// S3から画像ファイルのダウンロード
+			downloadKey := s3.GetObjectInput(bucketName, key)
+			buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+			if err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"code": 404,
+					"message": err.Error(),
+				})
+			}
+			bufArray = append(bufArray, buf)
 		}
-		// S3から画像ファイルのダウンロード
-		downloadKey := s3.GetObjectInput(bucketName, key)
-		buf, err := s3.Download(s3Instance, downloadKey) //[]byte
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"code": 404,
-				"message": err.Error(),
-			})
-		}
-		bufArray = append(bufArray, buf)
 	}
 	// いいね しているユーザの取得
 	var likes []Like
@@ -540,6 +547,112 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"question": question,
 		"answer": answers,
+	})
+	return
+
+}
+
+// POST: /qustion/<objectID:questionId>
+// 質問に対する回答を追加するAPI
+func (qc QuestionController) PostAnswer(c *gin.Context) {
+	var err error
+
+	// JWTよりuserIdの取得
+	claims := jwt.ExtractClaims(c)
+	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
+
+	// パスパラメータを取得
+	questionId, _ := primitive.ObjectIDFromHex(c.Param("questionId"))
+
+	// Bodyの内容を取得
+	var request body.PostAnswerBody
+	if err = c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// 回答を追加
+	answerId := primitive.NewObjectID() // 質問ID
+
+	// 画像のアップロード & URIの指定
+	var urls []string
+	for idx, obj := range request.Images {
+		var bucketName string = "static"
+		var key string = "/" + questionId.Hex() + "_" + answerId.Hex() + "_" + strconv.Itoa(idx) + ".png"
+		urls = append(urls, bucketName + key)
+		// S3インスタンスの作成
+		s3_answer, _ := s3.NewS3()
+		// 画像のアップロード
+		err = s3.Upload(s3_answer, s3.GetPutObjectInput(bucketName, key, obj))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+	
+	docAnswer := db_entity.Answer{
+		Id: answerId,
+		Detail: request.Detail,
+		Image: urls,
+		Respondent: userId,
+		Like: []primitive.ObjectID{},
+	}
+
+	questionCollection := db.MongoClient.Database("insertDB").Collection("questions")
+	var doc bson.M
+	filter := bson.M{"_id": questionId}
+	err = questionCollection.FindOne(context.TODO(), filter, options.FindOne().SetProjection(bson.M{"answer": 1, "_id": 0})).Decode(&doc)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+	}
+	var docAnswerArray []db_entity.Answer
+	for _, ans := range doc["answer"].(primitive.A) {
+		// ゼロ値処理
+		var image []string
+		if ans.(primitive.M)["image"] != nil {
+			image = ans.(primitive.M)["image"].([]string)
+		}
+		var likes []primitive.ObjectID
+		if ans.(primitive.M)["like"] != nil {
+			for _, like := range ans.(primitive.M)["like"].(primitive.A) {
+				likes = append(likes, like.(primitive.ObjectID))
+			}
+		}
+		docAnswerArray = append(docAnswerArray, db_entity.Answer{
+			Id: ans.(primitive.M)["_id"].(primitive.ObjectID),
+			Detail: ans.(primitive.M)["detail"].(string),
+			Image: image,
+			Respondent: ans.(primitive.M)["respondent"].(primitive.ObjectID),
+			Like: likes,
+		})
+	}
+
+	docAnswerArray = append(docAnswerArray, docAnswer)
+	_, err = questionCollection.UpdateOne(
+		context.TODO(),
+		bson.M{"_id": questionId},
+		bson.D{
+			{"$set", bson.D{{"answer", docAnswerArray}, {"updatedAt", time.Now()}}},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"answerId": answerId,
 	})
 	return
 

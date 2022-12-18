@@ -99,6 +99,8 @@ func setRouter() *gin.Engine {
 			questionGroup.POST("", ctrl.PostQuestion)
 			// 質問の取得
 			questionGroup.GET(":questionId", ctrl.GetQuestion)
+			// 質問に回答を追加
+			questionGroup.POST(":questionId", ctrl.PostAnswer)
 			// 優先度一覧を取得
 			questionGroup.GET("/priority", ctrl.GetPriority)
 			// ステータス一覧を取得
