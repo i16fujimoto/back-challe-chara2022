@@ -5,6 +5,7 @@ import (
 	"back-challe-chara2022/controller/user_controller"
 	"back-challe-chara2022/controller/login_controller"
 	"back-challe-chara2022/controller/question_controller"
+	"back-challe-chara2022/controller/community_controller"
 	
 	"os"
 	"net/http"
@@ -84,8 +85,6 @@ func setRouter() *gin.Engine {
 			userGroup.GET("", ctrl.GetUser)
 			// userのステータスを更新
 			userGroup.PATCH("/status", ctrl.PatchUserStatus)
-			// userの所属するコミュニティを全て取得
-			userGroup.GET("/community", ctrl.GetUserCommunity)
 			// userのアイコンを取得
 			userGroup.GET("/icon", ctrl.GetUserIcon)	
 		}
@@ -107,6 +106,13 @@ func setRouter() *gin.Engine {
 			questionGroup.GET("/status", ctrl.GetStatus)
 			// 質問・回答のいいねの更新
 			questionGroup.PATCH("/answer/like", ctrl.PatchLike)
+		}
+
+		communityGroup := auth.Group("/community")
+		{
+			ctrl := community_controller.CommunityController{}
+			// userの所属するコミュニティを全て取得
+			communityGroup.GET("", ctrl.GetCommunity)
 		}
 	}
 	return r

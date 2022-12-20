@@ -31,19 +31,8 @@ type UserIconResponse struct {
 	UserIcon []byte `json:"userIcon"`
 }
 
-type UserCommunityResponse struct {
-	CommunityId primitive.ObjectID `json:"communityId"`
-	CommunityName string `json:"communityName"`
-	Icon []byte `json:"icon"`
-}
-
 type UserStatusResponse struct {
 	IsUpdated bool `json:"isUpdated"`
-}
-
-type DocCommunity struct {
-	Id primitive.ObjectID `json:"id"`
-	CommunityId []string `json:"communityId"`
 }
 
 // GET: /user
@@ -164,107 +153,6 @@ func (uc UserController) PatchUserStatus(c *gin.Context) {
 	return
 }
 
-// GET: /user/community
-// $inを用いることで1つのクエリでいけるかも
-func (uc UserController) GetUserCommunity(c *gin.Context) {
-
-	// userIdが所属するコミュニティのcommunity_nameを全て返す
-
-	claims := jwt.ExtractClaims(c)
-	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
-	fmt.Println(userId) // debug message
-
-	var err error
-
-	userCollection := db.MongoClient.Database("insertDB").Collection("users")
-
-	var doc_filter bson.Raw
-	// 検索条件
-	filter := bson.D{{"_id", userId}}
-	// query the user collection
-	err = userCollection.FindOne(context.TODO(), filter, options.FindOne().SetProjection(bson.M{"communityId": 1})).Decode(&doc_filter)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
-		return
-	} else if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with the userId")
-		c.JSON(http.StatusNotFound, gin.H{
-			"code": 404,
-			"message": "No document was found with the userId",
-		})
-		return
-	}
-	var d_tmp DocCommunity
-
-	// 配列の型を確定させるためにbsonを構造体に変換
-	err = bson.Unmarshal(doc_filter, &d_tmp)
-	if len(d_tmp.CommunityId) < 1 {
-		c.JSON(http.StatusOK, gin.H{"userCommunity": d_tmp.CommunityId})
-		return
-	}
-
-	var response []UserCommunityResponse
-
-	for _, doc := range d_tmp.CommunityId {
-
-		var docCommunity bson.M
-		// 検索条件
-		id, _ := primitive.ObjectIDFromHex(doc)
- 		filterCommunity := bson.M{"_id": id}
-		// query the community collection
-		communityCollection := db.MongoClient.Database("insertDB").Collection("communities")
-		err = communityCollection.FindOne(context.TODO(), filterCommunity, options.FindOne().SetProjection(bson.M{"communityName": 1, "icon": 1, "_id": 0})).Decode(&docCommunity)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
-			return
-		} else if err == mongo.ErrNoDocuments {
-			fmt.Printf("No document was found with the userId")
-			// c.JSON(http.StatusOK, gin.H{"userCommunity": make([]string, 0)})
-			c.JSON(http.StatusNotFound, gin.H{
-				"code": 404,
-				"message": "No document was found with the userId",
-			})
-			return
-		}
-		
-		// 画像の処理
-		var url string = docCommunity["icon"].(string)
-		var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
-		var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
-		// S3インスタンスを作成
-		s3Instance, err := s3.NewS3()
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"code": 503,
-				"message": "Service Unavailable",
-			})
-		}
-		// S3から画像ファイルのダウンロード
-		downloadKey := s3.GetObjectInput(bucketName, key)
-		buf, err := s3.Download(s3Instance, downloadKey) //[]byte
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"code": 404,
-				"message": err.Error(),
-			})
-		}
-
-		// Responseデータに追加
-		response = append(response, UserCommunityResponse{
-			CommunityId: id,
-			CommunityName: docCommunity["communityName"].(string),
-			Icon: buf,
-		})
-
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"communities": response,
-	})
-	return
-
-
-}
 
 // GET: /user/icon
 func (uc UserController) GetUserIcon(c *gin.Context) {
