@@ -52,9 +52,10 @@ func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	// クマのレスポンスを返却
 	var err error
 	var response string
+	var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
 
 	if *request.Bot {
-		response, err = chatGPT.Response(context.TODO(), []string{request.Text})
+		response, err = chatGPT.Response(context.TODO(), []string{pretext+request.Text})
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code": http.StatusBadRequest,
@@ -127,6 +128,7 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	// クマのレスポンスを返却
 	var err error
 	var response string
+	var pretext string = "以下の文章に対する励ましの言葉を送って\n"
 
 	if *request.Bot {
 
@@ -170,7 +172,7 @@ func (bc BearController) PostResponse(c *gin.Context) {
 
 		fmt.Println(text)
 
-		response, err = chatGPT.Response(context.TODO(), []string{text})
+		response, err = chatGPT.Response(context.TODO(), []string{pretext+text})
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code": http.StatusBadRequest,
