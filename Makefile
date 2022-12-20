@@ -14,6 +14,6 @@ migrate:
 sakura-build-dev:
 	cp ${HOME}/secret_client.json ./go-api
 	docker-compose -f docker-compose.dev.yml up -d --build
-up-dev:
+sakura-up-dev:
 	cp ${HOME}/secret_client.json ./go-api
 	docker-compose -f docker-compose.dev.yml up -d
