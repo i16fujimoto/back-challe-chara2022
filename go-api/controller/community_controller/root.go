@@ -32,6 +32,12 @@ type DocCommunity struct {
 	CommunityId []string `json:"communityId"`
 }
 
+type UserInfo struct {
+	UserName string `json:"userName"`
+	Status string `json:"status"`
+	Icon []byte `json:"icon"`
+}
+
 // GET: /user/community
 // Userが属するコミュニティを取得
 func (cc CommunityController) GetCommunity(c *gin.Context) {
@@ -269,4 +275,69 @@ func(cc CommunityController) PostMakeCommunity(c *gin.Context) {
 		"communityId": communityId,
 	})
 	return
+}
+
+func(cc CommunityController) GetUsersInCommunity(c *gin.Context) {
+
+	var err error
+
+	// パスパラメータからcommunityIdを取得
+	communityId, _ := primitive.ObjectIDFromHex(c.Param("communityId"))
+
+	// コミュニティの構成メンバーを取得
+	var result bson.M
+	communityCollection := db.MongoClient.Database("insertDB").Collection("communities")
+	opts := options.FindOne().SetProjection(bson.M{"_id": 0, "member" : 1}).SetSort(bson.D{{"Member.userName", 1}})
+	err = communityCollection.FindOne(context.TODO(), bson.M{"_id": communityId}, opts).Decode(&result)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": 404,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// ユーザ情報の抽出
+	var users []UserInfo
+	for _, user := range result["member"].(primitive.A) {
+		// Iconの画像をS3から取得
+		var url string = user.(primitive.M)["icon"].(string)
+		var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+		var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+		// S3インスタンスを作成
+		s3Instance, err := s3.NewS3()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 503,
+				"message": "Service Unavailable",
+			})
+		}
+		// S3から画像ファイルのダウンロード
+		downloadKey := s3.GetObjectInput(bucketName, key)
+		buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 404,
+				"message": err.Error(),
+			})
+		}
+		
+		// ユーザ情報の抽出
+		user := UserInfo{
+			UserName: user.(primitive.M)["userName"].(string),
+			Status: user.(primitive.M)["status"].(string),
+			Icon: buf,
+		}
+
+		// 配列に追加
+		users = append(users, user)
+
+	}
+
+	// Response
+	c.JSON(http.StatusOK, gin.H{
+		"users": users,
+	})
+	return
+	
 }
