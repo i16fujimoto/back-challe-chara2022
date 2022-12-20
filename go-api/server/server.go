@@ -60,7 +60,7 @@ func setRouter() *gin.Engine {
 	})
 
 	// ログインなしでクマを利用する
-	notLogin := r.Group("/bear_notlogin")
+	notLogin := r.Group("/bear-notlogin")
 	notLogin.POST("", bear_controller.BearController{}.PostNotLoginResponse)
 
 	// JWT認証のミドルウェアを通すAPIを設定
