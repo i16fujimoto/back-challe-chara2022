@@ -117,6 +117,8 @@ func setRouter() *gin.Engine {
 			communityGroup.POST("", ctrl.PostAddCommunity)
 			// コミュニティを作成する
 			communityGroup.POST("/make", ctrl.PostMakeCommunity)
+			// コミュニティ内のユーザ情報一覧を取得する
+			communityGroup.GET("/users/:communityId", ctrl.GetUsersInCommunity)
 		}
 	}
 	return r
