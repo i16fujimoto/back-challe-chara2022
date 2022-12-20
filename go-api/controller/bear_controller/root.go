@@ -179,7 +179,9 @@ func (bc BearController) PostResponse(c *gin.Context) {
 		}
 		fmt.Println(response) // debug
 		var return2Index int = strings.Index(response, "\n\n")
-		response = response[return2Index+2:]
+		if return2Index >= 0 {
+			response = response[return2Index+2:]
+		}
 
 	} else {
 		// 現在コレクション内に入っている励まし言葉の中から1つを抽出（ランダム）
