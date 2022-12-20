@@ -4,7 +4,7 @@ import (
 	"back-challe-chara2022/entity/request_entity/body"
 	"back-challe-chara2022/db"
 	"back-challe-chara2022/s3"
-	// "back-challe-chara2022/entity/db_entity"
+	"back-challe-chara2022/entity/db_entity"
 
 	"net/http"
 	"fmt"
@@ -186,5 +186,87 @@ func(cc CommunityController) PostAddCommunity(c *gin.Context) {
 		"communityName": result["communityName"].(string),
 	})
 	return
+}
 
+// POST: /community/make
+// ユーザがコミュニティを作成 ＆ 作成したコミュニティに参加する
+func(cc CommunityController) PostMakeCommunity(c *gin.Context) {
+
+	var err error
+
+	// JWTからuserIdを取得
+	claims := jwt.ExtractClaims(c)
+	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
+	fmt.Println(userId)
+
+	// bodyの内容を取得
+	var request body.PostMakeCommunityBody
+	if err = c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// communityIdの作成
+	communityId := primitive.NewObjectID()
+
+	// User情報のアップデート
+	userCollection := db.MongoClient.Database("insertDB").Collection("users")
+	filter := bson.M{"_id": userId}
+	update := bson.M{"communityId": communityId}
+	var docUser bson.M
+	if err = userCollection.FindOneAndUpdate(context.TODO(), filter, bson.M{"$push": update}).Decode(&docUser); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	// 構造体にデコード
+	var user db_entity.User
+	var buf []byte
+	// エンコード
+	buf, err = bson.Marshal(docUser)
+	bson.Unmarshal(buf, &user)
+
+
+	// 画像をS3に登録
+	var bucketName string = "static"
+	var key string = "/" + communityId.Hex() + ".png"
+	var url string = bucketName + key
+	// S3インスタンスの作成
+	s3_community, _ := s3.NewS3()
+	// 画像のアップロード
+	err = s3.Upload(s3_community, s3.GetPutObjectInput(bucketName, key, request.Icon))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	docCommunity := &db_entity.Community{
+		CommunityId: communityId,
+		CommunityName: request.CommunityName,
+		Member: []db_entity.User{user},
+		Icon: url,
+	}
+	// コミュニティコレクションに登録
+	communityCollection := db.MongoClient.Database("insertDB").Collection("communities")
+	if _, err = communityCollection.InsertOne(context.TODO(), docCommunity); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Response
+	c.JSON(http.StatusOK, gin.H{
+		"communityId": communityId,
+	})
+	return
 }
