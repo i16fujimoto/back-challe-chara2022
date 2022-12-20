@@ -13,3 +13,8 @@ type PostAnswerBody struct {
 	Detail string `json:"detail" binding:"required"`
 	Images [][]byte `json:"images"`
 }
+
+type PatchLikeBody struct {
+	QuestionId string `json:"questionId"`
+	AnswerId string `json:"answerId"`
+}
