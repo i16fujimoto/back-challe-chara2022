@@ -134,20 +134,6 @@ func main() {
 		fmt.Printf("Updated %v Documents!\n", result.ModifiedCount)
 	}
 
-	// user_id_array = append(user_id_array, docUser)
-	// fmt.Println(docUser.UserId)
-	// result, err5 := CommunityCollection.UpdateOne(
-	// 	context.TODO(),
-	// 	bson.M{"_id": communityId},
-	// 	bson.D{
-	// 		{"$set", bson.D{{"member", user_id_array}, {"updatedAt", time.Now()}}},
-	// 	},
-	// )
-	// if err5 != nil {
-	// 	panic(err5)
-	// } else {
-	// 	fmt.Printf("Updated %v Documents!\n", result.ModifiedCount)
-	// }
 
 	// communicationCollection init
 	communicationCollection := db.MongoClient.Database("insertDB").Collection("communications")
