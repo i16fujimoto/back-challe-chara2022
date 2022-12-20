@@ -13,6 +13,7 @@ services:
       MONGO_URI: ${MONGO_URI}
       GO111MODULE: "on"
       PORT: "8080"
+      GOOGLE_APPLICATION_CREDENTIALS: "serious-water-372017-6d2d15dcea8e.json"
     volumes:
       - ./go-api:/api
 
