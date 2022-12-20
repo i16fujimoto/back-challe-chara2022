@@ -52,7 +52,8 @@ func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	// クマのレスポンスを返却
 	var err error
 	var response string
-	var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
+	// var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
+	var pretext string = ""
 
 	if *request.Bot {
 		response, err = chatGPT.Response(context.TODO(), []string{pretext+request.Text})
@@ -128,7 +129,8 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	// クマのレスポンスを返却
 	var err error
 	var response string
-	var pretext string = "以下の文章に対する励ましの言葉を送って\n"
+	// var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
+	var pretext string = ""
 
 	if *request.Bot {
 

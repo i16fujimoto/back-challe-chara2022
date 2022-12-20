@@ -50,6 +50,7 @@ type Like struct {
 }
 
 type QuestionResponse struct {
+	QuestionId primitive.ObjectID `json:"questionId"`
 	Questioner string `json:"questioner"`
 	Title string `json:"title"`
 	Details string `json:"details"`
@@ -63,6 +64,7 @@ type QuestionResponse struct {
 
 // AnswerResponseは配列で返す
 type AnswerResponse struct {
+	AnswerId primitive.ObjectID `json:"answerId"`
 	Respondent string `json:"respondent"`
 	Details string `json:"details"`
 	Image [][]byte `json:"image"`
@@ -473,6 +475,7 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 
 
 		answers = append(answers, AnswerResponse{
+			AnswerId: ans.(primitive.M)["_id"].(primitive.ObjectID),
 			Respondent: docUser["userName"].(string),
 			Details: ans.(primitive.M)["detail"].(string),
 			Image: bufArray,
@@ -604,7 +607,7 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 	filterUser := bson.D{{"_id", doc["questioner"].(primitive.ObjectID)}}
 	// query the user collection
 	err = userCollection.FindOne(context.TODO(), filterUser,
-		options.FindOne().SetProjection(bson.M{"userName": 1, "_id": 0})).Decode(&docUser)
+		options.FindOne().SetProjection(bson.M{"userName": 1, "_id": 1})).Decode(&docUser)
 	if err == mongo.ErrNoDocuments {
 		fmt.Printf("No document was found with the stampId")
 		c.JSON(http.StatusNotFound, gin.H{
@@ -625,6 +628,7 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 
 
 	var question QuestionResponse = QuestionResponse{
+		QuestionId: docUser["_id"].(primitive.ObjectID),
 		Questioner: docUser["userName"].(string),
 		Title: doc["title"].(string),
 		Details: doc["detail"].(string),
