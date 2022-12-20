@@ -43,7 +43,7 @@ func (u *User) MarshalBSON() ([]byte, error) {
 type Community struct {
 	CommunityId primitive.ObjectID `json:"communityId" bson:"_id"`
 	CommunityName string `json:"communityName" bson:"communityName"`
-	Member []primitive.ObjectID `json:"member" bson:"member"`
+	Member []User `json:"member" bson:"member"`
 	Icon string `json:"icon" bson:"icon"`
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`

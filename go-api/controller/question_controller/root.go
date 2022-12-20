@@ -302,11 +302,11 @@ func (qc QuestionController) PostQuestion(c *gin.Context) {
 		Image: urls,
 		CommunityId: communityId,
 		Questioner: userId,
-		Like: []primitive.ObjectID{},
+		Like: make([]primitive.ObjectID, 0),
 		Priority: priorityId, 
 		Status: statusId, 
 		Category: request.Category,
-		Answer: []db_entity.Answer{},
+		Answer: make([]db_entity.Answer, 0),
 	}
 	_, err = questionCollection.InsertOne(context.TODO(), docQuestion) // ここでMarshalBSON()される
 	if err != nil {
@@ -653,7 +653,7 @@ func (qc QuestionController) PostAnswer(c *gin.Context) {
 	answerId := primitive.NewObjectID() // 質問ID
 
 	// 画像のアップロード & URIの指定
-	var urls []string
+	var urls []string = make([]string, 0)
 	for idx, obj := range request.Images {
 		var bucketName string = "static"
 		var key string = "/" + questionId.Hex() + "_" + answerId.Hex() + "_" + strconv.Itoa(idx) + ".png"
@@ -676,7 +676,7 @@ func (qc QuestionController) PostAnswer(c *gin.Context) {
 		Detail: request.Detail,
 		Image: urls,
 		Respondent: userId,
-		Like: []primitive.ObjectID{},
+		Like: make([]primitive.ObjectID, 0), // スライスを作成
 	}
 
 	questionCollection := db.MongoClient.Database("insertDB").Collection("questions")
@@ -692,11 +692,13 @@ func (qc QuestionController) PostAnswer(c *gin.Context) {
 	var docAnswerArray []db_entity.Answer
 	for _, ans := range doc["answer"].(primitive.A) {
 		// ゼロ値処理
-		var image []string
+		var images []string = make([]string, 0)
 		if ans.(primitive.M)["image"] != nil {
-			image = ans.(primitive.M)["image"].([]string)
+			for _, image := range ans.(primitive.M)["image"].(primitive.A) {
+				images = append(images, image.(string))
+			}
 		}
-		var likes []primitive.ObjectID
+		var likes []primitive.ObjectID = make([]primitive.ObjectID,0)
 		if ans.(primitive.M)["like"] != nil {
 			for _, like := range ans.(primitive.M)["like"].(primitive.A) {
 				likes = append(likes, like.(primitive.ObjectID))
@@ -705,7 +707,7 @@ func (qc QuestionController) PostAnswer(c *gin.Context) {
 		docAnswerArray = append(docAnswerArray, db_entity.Answer{
 			Id: ans.(primitive.M)["_id"].(primitive.ObjectID),
 			Detail: ans.(primitive.M)["detail"].(string),
-			Image: image,
+			Image: images,
 			Respondent: ans.(primitive.M)["respondent"].(primitive.ObjectID),
 			Like: likes,
 		})

@@ -50,7 +50,7 @@ func main() {
 	
 	// communityCollection init
 	CommunityCollection := db.MongoClient.Database("insertDB").Collection("communities")
-	var user_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
+	var user_id_array []db_entity.User = make([]db_entity.User, 0)
 	communityId, _	:= primitive.ObjectIDFromHex("639e1e8803161570622d5263")
 	docCom := &db_entity.Community{
 		CommunityId: communityId,
@@ -102,7 +102,7 @@ func main() {
 	var community_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	userId := primitive.NewObjectID()
 	// community_id_array = append(community_id_array, communityId)
-	docUser := &db_entity.User{
+	docUser := db_entity.User{
 		UserId: userId,
 		UserName: "test",
 		EmailAddress: "test@example.com",
@@ -115,7 +115,7 @@ func main() {
 		Question: question_id_array,
 		Like: like_id_array,
 	}
-	fmt.Println(*docUser)
+	fmt.Println(docUser)
 
 	_, err4 := userCollection.InsertOne(context.TODO(), docUser) // ここでMarshalBSON()される
 	if err4 != nil {
@@ -125,20 +125,29 @@ func main() {
 		fmt.Println("Successfully inserting users")
 	}
 
-	user_id_array = append(user_id_array, docUser.UserId)
-	fmt.Println(docUser.UserId)
-	result, err5 := CommunityCollection.UpdateOne(
-		context.TODO(),
-		bson.M{"_id": communityId},
-		bson.D{
-			{"$set", bson.D{{"member", user_id_array}, {"updatedAt", time.Now()}}},
-		},
-	)
-	if err5 != nil {
+	// $push : 配列に追加
+	// $pull : 配列から削除
+	// $set : 変更更新
+	if result, err5 := CommunityCollection.UpdateOne(context.TODO(), bson.M{"_id": communityId}, bson.D{{"$push", bson.M{"member": docUser}}, {"$set", bson.M{"updatedAt": time.Now()}}}); err5 != nil {
 		panic(err5)
 	} else {
 		fmt.Printf("Updated %v Documents!\n", result.ModifiedCount)
 	}
+
+	// user_id_array = append(user_id_array, docUser)
+	// fmt.Println(docUser.UserId)
+	// result, err5 := CommunityCollection.UpdateOne(
+	// 	context.TODO(),
+	// 	bson.M{"_id": communityId},
+	// 	bson.D{
+	// 		{"$set", bson.D{{"member", user_id_array}, {"updatedAt", time.Now()}}},
+	// 	},
+	// )
+	// if err5 != nil {
+	// 	panic(err5)
+	// } else {
+	// 	fmt.Printf("Updated %v Documents!\n", result.ModifiedCount)
+	// }
 
 	// communicationCollection init
 	communicationCollection := db.MongoClient.Database("insertDB").Collection("communications")
