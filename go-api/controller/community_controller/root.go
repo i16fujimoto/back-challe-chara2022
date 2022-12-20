@@ -1,7 +1,7 @@
 package community_controller
 
 import (
-	// "back-challe-chara2022/entity/request_entity/body"
+	"back-challe-chara2022/entity/request_entity/body"
 	"back-challe-chara2022/db"
 	"back-challe-chara2022/s3"
 	// "back-challe-chara2022/entity/db_entity"
@@ -132,7 +132,59 @@ func (cc CommunityController) GetCommunity(c *gin.Context) {
 	return
 }
 
+// POST: /community
+// ユーザがコミュニティに参加（追加）する
 func(cc CommunityController) PostAddCommunity(c *gin.Context) {
 
-	// 
+	var err error
+
+	// JWTからuserIdを取得
+	claims := jwt.ExtractClaims(c)
+	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
+	fmt.Println(userId)
+
+	// bodyの内容を取得
+	var request body.PostAddCommunityBody
+	if err = c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	// communityIdをbodyから取得
+	communityId, _ := primitive.ObjectIDFromHex(request.CommunityId)
+
+	// User情報のアップデート
+	userCollection := db.MongoClient.Database("insertDB").Collection("users")
+	filter := bson.M{"_id": userId}
+	update := bson.M{"communityId": communityId}
+	if _, err = userCollection.UpdateOne(context.TODO(), filter, bson.M{"$push": update}); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Community情報のアップデート
+	communityCollection := db.MongoClient.Database("insertDB").Collection("communities")
+	filter = bson.M{"_id": communityId}
+	update = bson.M{"member": userId}
+	var result bson.M
+	err = communityCollection.FindOneAndUpdate(context.TODO(), filter, bson.M{"$push": update}).Decode(&result)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Response
+	c.JSON(http.StatusOK, gin.H{
+		"communityName": result["communityName"].(string),
+	})
+	return
+
 }

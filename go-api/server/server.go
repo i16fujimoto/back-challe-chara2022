@@ -113,6 +113,8 @@ func setRouter() *gin.Engine {
 			ctrl := community_controller.CommunityController{}
 			// userの所属するコミュニティを全て取得
 			communityGroup.GET("", ctrl.GetCommunity)
+			// userがコミュニティを追加（参加）
+			communityGroup.POST("", ctrl.PostAddCommunity)
 		}
 	}
 	return r
