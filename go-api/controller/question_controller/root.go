@@ -41,6 +41,7 @@ type Question struct {
 	Priority string `json:"priority"`
 	Questioner primitive.ObjectID `json:"questioner"`
 	NumLikes int `json:"numLikes"`
+	CreatedAt primitive.DateTime `json:"createdAt"`
 }
 
 type Like struct {
@@ -57,6 +58,7 @@ type QuestionResponse struct {
 	Status string `json:"status"`
 	Priority string `json:"priority"`
 	Likes []Like
+	CreatedAt primitive.DateTime `json:"createdAt"`
 }
 
 // AnswerResponseは配列で返す
@@ -65,6 +67,7 @@ type AnswerResponse struct {
 	Details string `json:"details"`
 	Image [][]byte `json:"image"`
 	Likes []Like `json:"like"`
+	CreatedAt primitive.DateTime `json:"createdAt"`
 }
 
 
@@ -194,6 +197,9 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 			category = append(category, c.(string))
 		}
 
+		// 質問の投稿日時を格納
+		var timestamp primitive.DateTime = r["createdAt"].(primitive.DateTime)
+
 		// Likeの数
 		var cntLikes int = len(r["like"].(primitive.A))
 
@@ -233,6 +239,7 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 			Status: docStatus["statusName"].(string),
 			Questioner: r["questioner"].(primitive.ObjectID),
 			NumLikes: cntLikes,
+			CreatedAt: timestamp,
 		}
 
 
@@ -336,7 +343,7 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 	var doc bson.M // クエリ結果を格納
 	filter := bson.M{"_id": questionId}
 	err := questionCollection.FindOne(context.TODO(), filter,
-		options.FindOne().SetProjection(bson.M{"_id": 0, "questioner": 1, "title": 1, "detail": 1, "image": 1, "category": 1, "status": 1, "priority": 1, "like": 1, "answer": 1})).Decode(&doc)
+		options.FindOne().SetProjection(bson.M{"_id": 0, "questioner": 1, "title": 1, "detail": 1, "image": 1, "category": 1, "status": 1, "priority": 1, "like": 1, "answer": 1, "createdAt": 1})).Decode(&doc)
 	if err == mongo.ErrNoDocuments {
 		fmt.Printf("No document was found with the questionId")
 		c.JSON(http.StatusNotFound, gin.H{
@@ -355,6 +362,10 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 	// 質問の全回答を取得する
 	var answers []AnswerResponse
 	for _, ans := range doc["answer"].(primitive.A) {
+
+		// 回答投稿時間を格納
+		var timestamp primitive.DateTime = ans.(primitive.M)["createdAt"].(primitive.DateTime)
+
 		// 回答の画像の取得
 		var bufArray [][]byte
 		if ans.(primitive.M)["image"] != nil {
@@ -466,8 +477,11 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 			Details: ans.(primitive.M)["detail"].(string),
 			Image: bufArray,
 			Likes: likes,
+			CreatedAt: timestamp,
 		})
 	}
+
+
 
 	// 質問のカテゴリーを取得する
 	var categories []string
@@ -606,6 +620,10 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 		return
 	}
 
+	// 質問投稿時間を格納
+	var timestamp primitive.DateTime = doc["createdAt"].(primitive.DateTime)
+
+
 	var question QuestionResponse = QuestionResponse{
 		Questioner: docUser["userName"].(string),
 		Title: doc["title"].(string),
@@ -615,6 +633,7 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 		Status: docStatus["statusName"].(string), 
 		Priority: docPriority["priorityName"].(string), 
 		Likes: likes,
+		CreatedAt: timestamp,
 	}
 
 	// Response
