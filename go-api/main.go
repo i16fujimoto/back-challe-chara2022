@@ -6,11 +6,9 @@ import (
 )
 
 func main() {
-
     // DBの初期化
 	db.InitDB()
 
     // サーバの初期化
 	server.Init()
-
 }

@@ -24,7 +24,8 @@ func main() {
 	// bearToneCollection init
 	bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
 	// 仮レスポンス
-	responses := []string{"そうだよね", "もう一回最初から教えてよ", "そこってどういうことなの？", 
+	// responses_pos := []string{"楽しそう〜！", "偉いじゃん！", "がんばろ〜！！", "すごいよ！よく頑張ったね！"}
+	responses_neg := []string{"そうだよね", "もう一回最初から教えてよ", "そこってどういうことなの？", 
 						"<name> は頑張ってるやん！", "もうちょっと詰めてみようよ！", "<name> がそんなに考えてわかんないなら，誰もわかんないよ！", 
 						"今，頭が回らないだけで少し時間を空けて考えたらわかる時もあるよ！", "それはもう心が１回休めって言ってるんだよ",
 						"僕は <name> のことすごいと思ってるよ", "あきらめないで！", "深呼吸をして一旦落ち着いてみよ！",
@@ -32,7 +33,7 @@ func main() {
 						"苦しいときこそ僕を頼ってよ", "んー，ちょっと僕も考えてみるね", "甘いもの食べるといいかも！とっておきのハチミツわけてあげるよ！", 
 						"そんなことまでやってるの！偉いなぁ", "自分が思ってるより，<name>はすごい人だよ！", "10分くらい休憩して考えてみたら？", "後もうちょっとだよ！"}
 
-	for _, response := range responses {
+	for _, response := range responses_neg {
 		var err error
 		docTone := &db_entity.BearTone{
 			ToneId: primitive.NewObjectID(),

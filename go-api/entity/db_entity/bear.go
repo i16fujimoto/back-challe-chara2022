@@ -10,6 +10,7 @@ import (
 type BearTone struct {
 	ToneId primitive.ObjectID `json:"toneId" bson:"_id"`
 	Response string `json:"response" bson:"response"`
+	Sentiment string `json:"sentiment" bson:"sentiment"` // positive or neutral or negative
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`
 	DeletedAt  *time.Time `json:"deletedAt" bson:"deletedAt"`
