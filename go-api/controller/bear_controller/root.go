@@ -54,7 +54,7 @@ func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	var err error
 	var response string
 	// var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
-	var pretext string = "Is the following sentence troubling me?\n"
+	var pretext string = ""//"Is the following sentence troubling me?\n"
 
 	// NLP API
 	neg_phrase, sentiment, err := nlpAPI.GetTextSentiment(request.Text)
