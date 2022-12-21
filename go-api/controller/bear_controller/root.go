@@ -5,6 +5,7 @@ import (
 	"back-challe-chara2022/db"
 	"back-challe-chara2022/entity/db_entity"
 	"back-challe-chara2022/chatGPT"
+	"back-challe-chara2022/nlpAPI"
 
 	"net/http"
 	"fmt"
@@ -35,7 +36,7 @@ type BearHistoryResponse struct {
 	Histories []History `json:"histories"`
 }
 
-// Post: /bear
+// Post: /bear-notlogin
 func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	
 	var request body.SendBearBody
@@ -53,7 +54,18 @@ func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	var err error
 	var response string
 	// var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
-	var pretext string = ""
+	var pretext string = ""//"Is the following sentence troubling me?\n"
+
+	// NLP API
+	neg_phrase, sentiment, err := nlpAPI.GetTextSentiment(request.Text)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+	}
+	fmt.Println(neg_phrase)
+	fmt.Println(sentiment)
 
 	if *request.Bot {
 		response, err = chatGPT.Response(context.TODO(), []string{pretext+request.Text})

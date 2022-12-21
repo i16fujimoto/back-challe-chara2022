@@ -58,7 +58,10 @@ func (cc CommunityController) GetCommunity(c *gin.Context) {
 	// query the user collection
 	err = userCollection.FindOne(context.TODO(), filter, options.FindOne().SetProjection(bson.M{"communityId": 1})).Decode(&doc_filter)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
 		return
 	} else if err == mongo.ErrNoDocuments {
 		fmt.Printf("No document was found with the userId")
@@ -89,7 +92,10 @@ func (cc CommunityController) GetCommunity(c *gin.Context) {
 		communityCollection := db.MongoClient.Database("insertDB").Collection("communities")
 		err = communityCollection.FindOne(context.TODO(), filterCommunity, options.FindOne().SetProjection(bson.M{"communityName": 1, "icon": 1, "_id": 0})).Decode(&docCommunity)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
 			return
 		} else if err == mongo.ErrNoDocuments {
 			fmt.Printf("No document was found with the userId")
@@ -165,7 +171,8 @@ func(cc CommunityController) PostAddCommunity(c *gin.Context) {
 	userCollection := db.MongoClient.Database("insertDB").Collection("users")
 	filter := bson.M{"_id": userId}
 	update := bson.M{"communityId": communityId}
-	if _, err = userCollection.UpdateOne(context.TODO(), filter, bson.M{"$push": update}); err != nil {
+	var user db_entity.User
+	if err = userCollection.FindOneAndUpdate(context.TODO(), filter, bson.M{"$push": update}).Decode(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code": http.StatusBadRequest,
 			"message": err.Error(),
@@ -176,7 +183,7 @@ func(cc CommunityController) PostAddCommunity(c *gin.Context) {
 	// Community情報のアップデート
 	communityCollection := db.MongoClient.Database("insertDB").Collection("communities")
 	filter = bson.M{"_id": communityId}
-	update = bson.M{"member": userId}
+	update = bson.M{"member": user}
 	var result bson.M
 	err = communityCollection.FindOneAndUpdate(context.TODO(), filter, bson.M{"$push": update}).Decode(&result)
 	if err != nil {
@@ -317,7 +324,7 @@ func(cc CommunityController) GetUsersInCommunity(c *gin.Context) {
 		buf, err := s3.Download(s3Instance, downloadKey) //[]byte
 		if err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"code": 404,
+				"code": http.StatusServiceUnavailable,
 				"message": err.Error(),
 			})
 		}
