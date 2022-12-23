@@ -94,7 +94,9 @@ func setRouter() *gin.Engine {
 			// userのステータスを更新
 			userGroup.PATCH("/status", ctrl.PatchUserStatus)
 			// userのアイコンを取得
-			userGroup.GET("/icon", ctrl.GetUserIcon)	
+			userGroup.GET("/icon", ctrl.GetUserIcon)
+			// userのプロフィールの編集
+			userGroup.PATCH("/profile", ctrl.PatchUserProfile)
 		}
 
 		questionGroup := auth.Group("/question")
