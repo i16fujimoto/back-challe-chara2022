@@ -32,6 +32,10 @@ func GetCORSMiddleware() gin.HandlerFunc {
 			"Content-Length",
 			"Accept-Encoding",
 			"Authorization",
+			"Cache-Control", 
+			"X-Requested-With",
+			"X-CSRF-Token",
+			"accept",
 		},
 		// cookieなどの情報を必要とするかどうか
 		AllowCredentials: true,

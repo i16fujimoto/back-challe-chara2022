@@ -4,12 +4,10 @@ import (
 	"back-challe-chara2022/entity/request_entity/body"
 	"back-challe-chara2022/db"
 	"back-challe-chara2022/entity/db_entity"
-	"back-challe-chara2022/s3"
 
 	"net/http"
 	"fmt"
 	"context"
-	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -176,21 +174,8 @@ func (qc QuestionController) PostQuestion(c *gin.Context) {
 
 	// 画像のアップロード
 	var urls []string
-	for idx, obj := range request.Image {
-		var bucketName string = "static"
-		var key string = "/" + questionId.Hex() + "_" + strconv.Itoa(idx) + ".png"
-		urls = append(urls, bucketName + key)
-		// S3インスタンスの作成
-		s3_question, _ := s3.NewS3()
-		// 画像のアップロード
-		err = s3.Upload(s3_question, s3.GetPutObjectInput(bucketName, key, obj))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-			return
-		}
+	for _, obj := range request.Image {
+		urls = append(urls, obj)
 	}
 
 	// 質問を登録

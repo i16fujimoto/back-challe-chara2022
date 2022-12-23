@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"fmt"
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
@@ -26,7 +25,6 @@ type QuestionResponse struct {
 	Questioner string `json:"questioner"`
 	Title string `json:"title"`
 	Details string `json:"details"`
-	Image [][]byte `json:"image"`
 	Category []string `json:"category"`
 	Status string `json:"status"`
 	Priority string `json:"priority"`
@@ -39,7 +37,6 @@ type AnswerResponse struct {
 	AnswerId primitive.ObjectID `json:"answerId"`
 	Respondent string `json:"respondent"`
 	Details string `json:"details"`
-	Image [][]byte `json:"image"`
 	Likes []Like `json:"like"`
 	CreatedAt primitive.DateTime `json:"createdAt"`
 }
@@ -128,36 +125,6 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 					})
 					return
 				}
-
-				// S3バケットとオブジェクトを指定
-				url := doc["icon"].(string)
-				var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
-				var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
-				
-				fmt.Println(bucketName, key)
-				
-				// S3インスタンスを作成
-				s3Instance, err := s3.NewS3()
-				if err != nil {
-					c.JSON(http.StatusServiceUnavailable, gin.H{
-						"code": 503,
-						"message": "Service Unavailable",
-					})
-				}
-
-				// S3から画像ファイルのダウンロード
-				downloadKey := s3.GetObjectInput(bucketName, key)
-				buf, err := s3.Download(s3Instance, downloadKey) //[]byte
-				if err != nil {
-					c.JSON(http.StatusServiceUnavailable, gin.H{
-						"code": 404,
-						"message": err.Error(),
-					})
-				}
-				likes = append(likes, Like {
-					UserName: doc["userName"].(string),
-					Icon: buf,
-				})
 			}
 		}
 
@@ -189,7 +156,6 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 			AnswerId: ans.(primitive.M)["_id"].(primitive.ObjectID),
 			Respondent: docUser["userName"].(string),
 			Details: ans.(primitive.M)["detail"].(string),
-			Image: bufArray,
 			Likes: likes,
 			CreatedAt: timestamp,
 		})
@@ -243,33 +209,6 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 		return
 	}
 
-	// 質問の画像の取得
-	var bufArray [][]byte
-	if doc["image"] != nil {
-		for _, img := range doc["image"].(primitive.A) {
-			var url string = img.(string)
-			var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
-			var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
-			// S3インスタンスを作成
-			s3Instance, err := s3.NewS3()
-			if err != nil {
-				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"code": 503,
-					"message": "Service Unavailable",
-				})
-			}
-			// S3から画像ファイルのダウンロード
-			downloadKey := s3.GetObjectInput(bucketName, key)
-			buf, err := s3.Download(s3Instance, downloadKey) //[]byte
-			if err != nil {
-				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"code": 404,
-					"message": err.Error(),
-				})
-			}
-			bufArray = append(bufArray, buf)
-		}
-	}
 	// いいね しているユーザの取得
 	var likes []Like
 	for _, user := range doc["like"].(primitive.A) {
@@ -355,7 +294,6 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 		Questioner: docUser["userName"].(string),
 		Title: doc["title"].(string),
 		Details: doc["detail"].(string),
-		Image: bufArray, 
 		Category: categories, 
 		Status: docStatus["statusName"].(string), 
 		Priority: docPriority["priorityName"].(string), 
@@ -400,21 +338,8 @@ func (qc QuestionController) PostAnswer(c *gin.Context) {
 
 	// 画像のアップロード & URIの指定
 	var urls []string = make([]string, 0)
-	for idx, obj := range request.Images {
-		var bucketName string = "static"
-		var key string = "/" + questionId.Hex() + "_" + answerId.Hex() + "_" + strconv.Itoa(idx) + ".png"
-		urls = append(urls, bucketName + key)
-		// S3インスタンスの作成
-		s3_answer, _ := s3.NewS3()
-		// 画像のアップロード
-		err = s3.Upload(s3_answer, s3.GetPutObjectInput(bucketName, key, obj))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-			return
-		}
+	for _, obj := range request.Images {
+		urls = append(urls, obj)
 	}
 	
 	docAnswer := db_entity.Answer{
