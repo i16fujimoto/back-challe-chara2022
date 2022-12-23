@@ -123,66 +123,16 @@ func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	// クマのレスポンスを返却
 	var err error
 	var response string
-	// var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
-	var pretext string = "Is the following sentence troubling me?\n"
 
-	// NLP API
-	neg_phrase, sentiment, err := nlpAPI.GetTextSentiment(request.Text)
+	response, _, err = askToOthersResponse(request.Text)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code": http.StatusBadRequest,
 			"message": err.Error(),
 		})
 	}
-	fmt.Println(neg_phrase)
-	fmt.Println(sentiment)
 
-	if *request.Bot {
-		response, err = chatGPT.Response(context.TODO(), []string{pretext+request.Text})
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-		}
-		fmt.Println(response) // debug
-		var return2Index int = strings.Index(response, "\n\n")
-		response = response[return2Index+2:]
-
-	} else {
-		// 現在コレクション内に入っている励まし言葉の中から1つを抽出
-		bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
-		// Aggregate executes an aggregate command against the collection and returns a cursor over the resulting documents.
-		var cursor *mongo.Cursor
-		pipeline := []bson.D{bson.D{{"$sample", bson.D{{"size", 1}}}}}
-		cursor, err = bearToneCollection.Aggregate(context.TODO(), pipeline)
-		if err != nil {
-			fmt.Println("aaaaa")
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-			return 
-		} else if err == mongo.ErrNoDocuments {
-			fmt.Printf("No document was found with the Responses")
-			c.JSON(http.StatusNotFound, gin.H{
-				"code": http.StatusNotFound,
-				"massage": err.Error(),
-			})
-			return 
-		}
-		var result []bson.M
-		if err := cursor.All(context.TODO(), &result); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-			return
-		}
-
-		response = strings.Replace(result[0]["response"].(string), "<name>", "きみ", -1)
-		
-	}
+	response += "\n\n" + "Qmattaに登録すると僕がもっと話し相手になれるよ！\nコミュニティのみんなにも質問して悩みを解決しよう！"
 
 	// 返り値
 	c.JSON(http.StatusOK, BearResponse{Response: response})
@@ -322,114 +272,61 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	// クマのレスポンスを返却
 	var err error
 	var response string
-	// var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
-	var pretext string = ""
+	var history string
 
-	if *request.Bot {
 
-		comCollection := db.MongoClient.Database("insertDB").Collection("communications")
-		// 検索条件
-		timeNow := time.Now()
-		filter := bson.M{
-			"userId": userId, 
-			"createdAt": bson.D{{"$gte", timeNow.Add(time.Minute * (-3))}},
-		}
+	comCollection := db.MongoClient.Database("insertDB").Collection("communications")
+	// 検索条件
+	timeNow := time.Now()
+	filter := bson.M{
+		"userId": userId, 
+		"createdAt": bson.D{{"$lte", timeNow}},
+	}
 
-		fmt.Println(timeNow, timeNow.Add(time.Minute * (-3)))
+	fmt.Println(timeNow, timeNow.Add(time.Minute * (-3)))
 
-		var cur *mongo.Cursor
-		findOptions := options.Find().SetProjection(bson.M{"_id": 0, "text" : 1, "response": 1}).SetLimit(3).SetSort(bson.D{{"createdAt", -1}})
-		// findOptions := options.Find().SetProjection(bson.M{"_id": 0, "messages" : 1}).SetLimit(10).SetSort(bson.M{"messages": bson.M{"createdAt": -1}})
-		cur, err = comCollection.Find(context.TODO(), filter, findOptions)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-			return
-		}
-		// 検索結果をresultsにデコード
-		var results []bson.M
-		if err = cur.All(context.TODO(), &results); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-			return
-		}
+	var doc bson.M
+	findOptions := options.FindOne().SetProjection(bson.M{"_id": 0, "createdAt": 1}).SetSort(bson.D{{"createdAt", 1}})
+	// findOptions := options.Find().SetProjection(bson.M{"_id": 0, "messages" : 1}).SetLimit(10).SetSort(bson.M{"messages": bson.M{"createdAt": -1}})
+	err = comCollection.FindOne(context.TODO(), filter, findOptions).Decode(&doc)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
 
-		var text string
-		for _, r := range results {
-			text += r["text"].(string) + "\n"
-			text += r["response"].(string) + "\n"
-		}
-		text += request.Text
+	// 最後の履歴の時間
+	lastMessage := doc["createdAt"].(primitive.DateTime).Time()
+	// 比較対象の定義
+	min4Before := time.Now().Add(time.Minute * (-4))
+	min9Before := time.Now().Add(time.Minute * (-9))
+	min15Before := time.Now().Add(time.Minute * (-15))
+	min20Before := time.Now().Add(time.Minute * (-20))
 
-		fmt.Println(text)
+	// fmt.Printf("%T\n", doc["createdAt"].(primitive.DateTime).Time())
+	// 入力文
+	fmt.Println(request.Text)
 
-		response, err = chatGPT.Response(context.TODO(), []string{pretext+text})
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-		}
-		fmt.Println(response) // debug
-		var return2Index int = strings.Index(response, "\n\n")
-		if return2Index >= 0 {
-			response = response[return2Index+2:]
-		}
+	switch {
+	case lastMessage.Before(min4Before):
+		response, history, err = adviceResponse(request.Text)
+	case lastMessage.Before(min9Before):
+		response, history, err = hintResponse(request.Text)
+	case lastMessage.Before(min15Before):
+		response, history, err = answerResponse(request.Text)
+	case lastMessage.Before(min20Before):
+		response, history, err = askToOthersResponse(request.Text)
+	default:
+		response, history, err = adviceResponse(request.Text)
+	}
 
-	} else {
-		// 現在コレクション内に入っている励まし言葉の中から1つを抽出（ランダム）
-		bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
-		// Aggregate executes an aggregate command against the collection and returns a cursor over the resulting documents.
-		var cursor *mongo.Cursor
-		pipeline := []bson.D{bson.D{{"$sample", bson.D{{"size", 1}}}}}
-		cursor, err = bearToneCollection.Aggregate(context.TODO(), pipeline)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-			return 
-		} else if err == mongo.ErrNoDocuments {
-			fmt.Printf("No document was found with the Responses")
-			c.JSON(http.StatusNotFound, gin.H{
-				"code": http.StatusNotFound,
-				"massage": err.Error(),
-			})
-			return 
-		}
-		var result []bson.M
-		if err := cursor.All(context.TODO(), &result); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code": http.StatusBadRequest,
-				"message": err.Error(),
-			})
-			return
-		}
-
-		userCollection := db.MongoClient.Database("insertDB").Collection("users")
-		var doc bson.M
-		// 検索条件
-		filter := bson.M{"_id": userId}
-		// query
-		if err := userCollection.FindOne(context.TODO(), filter, 
-			options.FindOne().SetProjection(bson.M{"userName": 1, "_id": 0})).Decode(&doc); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
-			return
-		} else if err == mongo.ErrNoDocuments {
-			fmt.Printf("No document was found with the userId")
-			c.JSON(http.StatusNotFound, gin.H{
-				"code": 404,
-				"message": "No document was found with the userId",
-			})
-			return
-		}
-
-		// ランダムに返ってきた結果を設定
-		response = strings.Replace(result[0]["response"].(string), "<name>", doc["userName"].(string), -1)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
 	}
 
 	// 送られてきた内容（message）はDBに保存
@@ -437,7 +334,7 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	docCommunication := &db_entity.Communication{
 		Id: primitive.NewObjectID(),
 		UserId: userId,
-		Text: request.Text, // ユーザからの入力
+		Text: history, // 履歴に載せる言葉
 		Response: response, // クマからの出力
 	}
 	_, err = communicationCollection.InsertOne(context.TODO(), docCommunication)
@@ -523,4 +420,98 @@ func (bc BearController) GetHistory(c *gin.Context) {
 	response := BearHistoryResponse{Histories: historyArray}
 	c.JSON(http.StatusOK, response)
 	return
+}
+
+// アドバイスを返す
+// 1 ~ 4 min
+func adviceResponse(text string) (string, string, error) {
+
+	fmt.Println("advice")
+	
+	// prefix
+	var prefix string = "Give me your advice on the following statement in Japanese.\n"
+
+	var response string
+	var err error
+
+	response, err = chatGPT.Response(context.TODO(), []string{prefix + text})
+	if err != nil {
+		return "", "", err
+	}
+	fmt.Println(response) // debug
+	var return2Index int = strings.Index(response, "\n\n")
+	if return2Index >= 0 {
+		response = response[return2Index+2:]
+	}
+
+	return response, "\\\\ クマからのアドバイス ! //", nil
+}
+
+// ヒントを返す
+// 4 ~ 9 min
+func hintResponse(text string) (string, string, error) {
+
+	fmt.Println("hint")
+	
+	// prefix
+	var prefix string = "以下の悩みを解消するヒントを教えてください。\n"
+
+	var response string
+	var err error
+
+	response, err = chatGPT.Response(context.TODO(), []string{prefix + text})
+	if err != nil {
+		return "", "", err
+	}
+	fmt.Println(response) // debug
+	var return2Index int = strings.Index(response, "\n\n")
+	if return2Index >= 0 {
+		response = response[return2Index+2:]
+	}
+
+	return response, "\\\\ クマからのヒント ! //", nil
+}
+
+
+// 答えを返す
+// 9 ~ 15 min
+func answerResponse(text string) (string, string, error) {
+	
+	fmt.Println("answer")
+
+	var response string
+	var err error
+	
+	response, err = chatGPT.Response(context.TODO(), []string{text})
+	if err != nil {
+		return "", "", err
+	}
+	fmt.Println(response) // debug
+	var return2Index int = strings.Index(response, "\n\n")
+	if return2Index >= 0 {
+		response = response[return2Index+2:]
+	}
+
+	return response, "\\\\ クマの答え ! //", nil
+}
+
+// 人に聞くことを勧める
+// 15 ~ 20 min
+func askToOthersResponse(text string) (string, string, error) {
+	
+	fmt.Println("ask to others")
+
+	response, _, err := adviceResponse(text)
+	if err != nil {
+		return "", "", err
+	}
+	var return2Index int = strings.Index(response, "\n\n")
+	if return2Index >= 0 {
+		response = response[return2Index+2:]
+	}
+
+	response += "\n\n" + "15分ルールっていうのがあって、僕が力になれるのはここまでかな。\n今僕に話してくれた内容から得られたヒントをもとにコミュニティのみんなに質問してみよう！"
+	fmt.Println(response) // debug
+
+	return response, "\\\\ コミュニティに聞いてみて ！ //", nil
 }

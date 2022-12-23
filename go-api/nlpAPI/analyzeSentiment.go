@@ -47,7 +47,6 @@ func GetTextSentiment(text string) ([]string, string, error) {
 	fmt.Println(sentiment)
 	fmt.Printf("Text: %v\n", text)
 
-// 	document_sentiment:{magnitude:1.7}  language:"ja"  sentences:{text:{content:"僕は優秀なエンジニア！"}  sentiment:{magnitude:0.9  score:0.9}}  sentences:{text:{content:"だけど，print文がわからないんだ"  begin_offset:33}  sentiment:{magnitude:0.7  score:-0.7}}
 
 	// ネガティブな文章を集める
 	var neg_phrase []string
