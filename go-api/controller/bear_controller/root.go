@@ -29,6 +29,7 @@ type BearResponse struct {
 
 type History struct {
 	Text string `json:"text"`
+	Response string `json:"response"`
 	Date primitive.DateTime `json:"date"`
 }
 
@@ -54,7 +55,7 @@ func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	var err error
 	var response string
 	// var pretext string = "一人称は僕で，以下の文章に対する励ましの言葉を送って\n"
-	var pretext string = ""//"Is the following sentence troubling me?\n"
+	var pretext string = "Is the following sentence troubling me?\n"
 
 	// NLP API
 	neg_phrase, sentiment, err := nlpAPI.GetTextSentiment(request.Text)
@@ -302,7 +303,7 @@ func (bc BearController) GetHistory(c *gin.Context) {
 	}
 	var cur *mongo.Cursor
 	var err error
-	findOptions := options.Find().SetProjection(bson.M{"_id": 0, "text" : 1, "createdAt": 1}).SetLimit(10).SetSort(bson.D{{"createdAt", -1}})
+	findOptions := options.Find().SetProjection(bson.M{"_id": 0, "text" : 1, "response": 1, "createdAt": 1}).SetLimit(10).SetSort(bson.D{{"createdAt", -1}})
 	// findOptions := options.Find().SetProjection(bson.M{"_id": 0, "messages" : 1}).SetLimit(10).SetSort(bson.M{"messages": bson.M{"createdAt": -1}})
 	cur, err = comCollection.Find(context.TODO(), filter, findOptions)
 	if err != nil {
@@ -333,6 +334,7 @@ func (bc BearController) GetHistory(c *gin.Context) {
 	for _, r := range results {
 		history := History{
 			Text: r["text"].(string),
+			Response: r["response"].(string),
 			Date:  r["createdAt"].(primitive.DateTime),
 		}
 		historyArray = append(historyArray, history)
