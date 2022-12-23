@@ -62,7 +62,13 @@ func setRouter() *gin.Engine {
 
 	// ログインなしでクマを利用する
 	notLogin := r.Group("/bear-notlogin")
-	notLogin.POST("", bear_controller.BearController{}.PostNotLoginResponse)
+	{
+		ctrl := bear_controller.BearController{}
+		// クマの返答
+		notLogin.POST("", ctrl.PostNotLoginResponse)
+		// Textのネガポジ判定とクマの返答
+		notLogin.POST("/sentiment", ctrl.PostNotLoginSentimentResponse)
+	}
 
 	// JWT認証のミドルウェアを通すAPIを設定
 	auth := r.Group("/")
@@ -74,6 +80,8 @@ func setRouter() *gin.Engine {
 			ctrl := bear_controller.BearController{}
 			// 熊の返答を返す
 			bearGroup.POST("", ctrl.PostResponse) // required login user
+			// クマの定型文に必要なネガポジ判定
+			bearGroup.POST("/sentiment", ctrl.PostSentimentResponse)
 			// クマとの対話履歴を返す
 			bearGroup.GET("/history", ctrl.GetHistory)
 		}

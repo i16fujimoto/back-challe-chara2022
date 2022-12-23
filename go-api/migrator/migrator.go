@@ -25,7 +25,8 @@ func main() {
 	// bearToneCollection init
 	bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
 	// 仮レスポンス
-	// responses_pos := []string{"楽しそう〜！", "偉いじゃん！", "がんばろ〜！！", "すごいよ！よく頑張ったね！"}
+	responses_pos := []string{"楽しそう〜！", "<name> 偉いじゃん！", "もし，<name> が困ったら僕を頼ってね！", "うんうん！"}
+	responses_neutral := []string{"うんうん！", "へー！", "もし，<name> が困ったら僕を頼ってね！", "困ったことがあったらコミュニティのみんなに問いをかけてみてもいいかもね！！"}
 	responses_neg := []string{"そうだよね", "もう一回最初から教えてよ", "そこってどういうことなの？", 
 						"<name> は頑張ってるやん！", "もうちょっと詰めてみようよ！", "<name> がそんなに考えてわかんないなら，誰もわかんないよ！", 
 						"今，頭が回らないだけで少し時間を空けて考えたらわかる時もあるよ！", "それはもう心が１回休めって言ってるんだよ",
@@ -39,6 +40,41 @@ func main() {
 		docTone := &db_entity.BearTone{
 			ToneId: primitive.NewObjectID(),
 			Response: response,
+			Sentiment: "neg",
+		}
+	
+		_, err = bearToneCollection.InsertOne(context.TODO(), docTone) // ここでMarshalBSON()される
+		if err != nil {
+			fmt.Println("Error inserting bear")
+			panic(err)
+		} else {
+			fmt.Println("Successfully inserting bear_tone")
+		}
+	}
+
+	for _, response := range responses_pos {
+		var err error
+		docTone := &db_entity.BearTone{
+			ToneId: primitive.NewObjectID(),
+			Response: response,
+			Sentiment: "pos",
+		}
+	
+		_, err = bearToneCollection.InsertOne(context.TODO(), docTone) // ここでMarshalBSON()される
+		if err != nil {
+			fmt.Println("Error inserting bear")
+			panic(err)
+		} else {
+			fmt.Println("Successfully inserting bear_tone")
+		}
+	}
+
+	for _, response := range responses_neutral {
+		var err error
+		docTone := &db_entity.BearTone{
+			ToneId: primitive.NewObjectID(),
+			Response: response,
+			Sentiment: "neutral",
 		}
 	
 		_, err = bearToneCollection.InsertOne(context.TODO(), docTone) // ここでMarshalBSON()される

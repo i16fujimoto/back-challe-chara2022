@@ -37,7 +37,76 @@ type BearHistoryResponse struct {
 	Histories []History `json:"histories"`
 }
 
-// Post: /bear-notlogin
+//POST: /bear-notlogin/sentiment
+func (bc BearController) PostNotLoginSentimentResponse(c *gin.Context) {
+	
+	var request body.SendBearSentimentBody
+	// bodyのjsonデータを構造体にBind
+	if err := c.BindJSON(&request); err != nil {
+		// bodyのjson形式が合っていない場合
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// クマのレスポンスを返却
+	var err error
+	var response string
+
+	// NLP API
+	negPhrase, sentiment, err := nlpAPI.GetTextSentiment(request.Text)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+	}
+
+	// 現在コレクション内に入っている中から1つを抽出
+	bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
+	// Aggregate executes an aggregate command against the collection and returns a cursor over the resulting documents.
+	var cursor *mongo.Cursor
+	matchStage := bson.D{{"$match", bson.D{{"sentiment", sentiment}}}}
+	sampleStage := bson.D{{"$sample", bson.D{{"size", 1}}}}
+	// pipeline := []bson.D{bson.D{{"$match", bson.D{{"sentiment", sentiment}}}, {"$sample", bson.D{{"size", 1}}}}}
+	cursor, err = bearToneCollection.Aggregate(context.TODO(), mongo.Pipeline{matchStage, sampleStage})
+	if err != nil {
+		fmt.Println("aaaaa")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return 
+	} else if err == mongo.ErrNoDocuments {
+		fmt.Printf("No document was found with the Responses")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": http.StatusNotFound,
+			"massage": err.Error(),
+		})
+		return 
+	}
+	var result []bson.M
+	if err := cursor.All(context.TODO(), &result); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	response = strings.Replace(result[0]["response"].(string), "<name>", "きみ", -1)
+	// 返り値
+	c.JSON(http.StatusOK, gin.H{
+		"negPhrase": negPhrase,
+		"response": response,
+	})
+	return
+
+}
+
+// POST: /bear-notlogin
 func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	
 	var request body.SendBearBody
@@ -120,8 +189,119 @@ func (bc BearController) PostNotLoginResponse(c *gin.Context) {
 	return
 }
 
+//POST: /bear/sentiment
+func (bc BearController) PostSentimentResponse(c *gin.Context) {
+	
+	var request body.SendBearSentimentBody
+	// bodyのjsonデータを構造体にBind
+	if err := c.BindJSON(&request); err != nil {
+		// bodyのjson形式が合っていない場合
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
 
-// POST: /bear/<str: userId>
+	// userIdをJWTから取得
+	claims := jwt.ExtractClaims(c)
+	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
+	fmt.Println(userId) // debug message
+
+	// クマのレスポンスを返却
+	var err error
+	var response string
+
+	// NLP API
+	negPhrase, sentiment, err := nlpAPI.GetTextSentiment(request.Text)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+	}
+
+	// 現在コレクション内に入っている中から1つを抽出
+	bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
+	// Aggregate executes an aggregate command against the collection and returns a cursor over the resulting documents.
+	var cursor *mongo.Cursor
+	matchStage := bson.D{{"$match", bson.D{{"sentiment", sentiment}}}}
+	sampleStage := bson.D{{"$sample", bson.D{{"size", 1}}}}
+	// pipeline := []bson.D{bson.D{{"$match", bson.D{{"sentiment", sentiment}}}, {"$sample", bson.D{{"size", 1}}}}}
+	cursor, err = bearToneCollection.Aggregate(context.TODO(), mongo.Pipeline{matchStage, sampleStage})
+	if err != nil {
+		fmt.Println("aaaaa")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return 
+	} else if err == mongo.ErrNoDocuments {
+		fmt.Printf("No document was found with the Responses")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": http.StatusNotFound,
+			"massage": err.Error(),
+		})
+		return 
+	}
+	var result []bson.M
+	if err := cursor.All(context.TODO(), &result); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	userCollection := db.MongoClient.Database("insertDB").Collection("users")
+	var doc bson.M
+	// 検索条件
+	filter := bson.M{"_id": userId}
+	// query
+	if err := userCollection.FindOne(context.TODO(), filter, 
+		options.FindOne().SetProjection(bson.M{"userName": 1, "_id": 0})).Decode(&doc); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"result": err.Error()})
+		return
+	} else if err == mongo.ErrNoDocuments {
+		fmt.Printf("No document was found with the userId")
+		c.JSON(http.StatusNotFound, gin.H{
+			"code": 404,
+			"message": "No document was found with the userId",
+		})
+		return
+	}
+
+	response = strings.Replace(result[0]["response"].(string), "<name>", doc["userName"].(string), -1)
+
+	// 送られてきた内容（message）はDBに保存
+	communicationCollection := db.MongoClient.Database("insertDB").Collection("communications")
+	docCommunication := &db_entity.Communication{
+		Id: primitive.NewObjectID(),
+		UserId: userId,
+		Text: request.Text, // ユーザからの入力
+		Response: response, // クマからの出力
+	}
+	_, err = communicationCollection.InsertOne(context.TODO(), docCommunication)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// 返り値
+	c.JSON(http.StatusOK, gin.H{
+		"negPhrase": negPhrase,
+		"response": response,
+	})
+	return
+
+}
+
+
+
+// POST: /bear
 func (bc BearController) PostResponse(c *gin.Context) {
 
 	var request body.SendBearBody
