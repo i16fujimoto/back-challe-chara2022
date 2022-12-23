@@ -211,3 +211,59 @@ func (uc UserController) GetUserIcon(c *gin.Context) {
 		c.JSON(http.StatusOK, response)
 	}
 }
+
+// PATCH: user/profile
+// ユーザ情報の編集
+func(uc UserController) PatchUserProfile(c *gin.Context) {
+
+	var err error
+
+	// userId をJWTから取得
+	claims := jwt.ExtractClaims(c)
+	userId, _ := primitive.ObjectIDFromHex(claims["userId"].(string))
+	fmt.Println(userId) // debug message
+
+	// bodyの内容を取得
+	var request body.PatchUserProfileBody
+	if err = c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// User情報のアップデート
+	userCollection := db.MongoClient.Database("insertDB").Collection("users")
+	filter := bson.M{"_id": userId}
+	update := bson.M{"userName": request.UserName, "profile": request.Profile}
+	var docUser bson.M
+	if err = userCollection.FindOneAndUpdate(context.TODO(), filter, bson.M{"$set": update}).Decode(&docUser); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	var url string = docUser["icon"].(string)
+	var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+	var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+	// S3インスタンスの作成
+	s3_user, _ := s3.NewS3()
+	// 画像のアップロード
+	err = s3.Upload(s3_user, s3.GetPutObjectInput(bucketName, key, request.Icon))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": http.StatusOK,
+		"message": "success",
+	})
+	return
+}
