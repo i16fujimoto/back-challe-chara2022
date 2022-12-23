@@ -281,11 +281,11 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	fmt.Println(request.Text)
 
 	switch {
-	case request.Score <= -10 && request.Score > -20:
+	case request.Score <= -100 && request.Score > -200:
 		response, history, err = adviceResponse(request.Text)
-	case request.Score <= -20 && request.Score > -30:
+	case request.Score <= -200 && request.Score > -300:
 		response, history, err = answerResponse(request.Text)
-	case request.Score <= -30:
+	case request.Score <= -300:
 		response, history, err = askToOthersResponse(request.Text)
 	}
 
