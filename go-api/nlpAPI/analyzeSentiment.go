@@ -14,7 +14,7 @@ type SentenceNLP struct {
 	score float32 `json:"score"`
 }
 
-func GetTextSentiment(text string) ([]SentenceNLP, string, error) {
+func GetTextSentiment(text string) ([]string, string, error) {
         
 	ctx := context.TODO()
 
@@ -47,18 +47,14 @@ func GetTextSentiment(text string) ([]SentenceNLP, string, error) {
 	fmt.Println(sentiment)
 	fmt.Printf("Text: %v\n", text)
 
-// 	document_sentiment:{magnitude:1.7}  language:"ja"  sentences:{text:{content:"僕は優秀なエンジニア！"}  sentiment:{magnitude:0.9  score:0.9}}  sentences:{text:{content:"だけど，print文がわからないんだ"  begin_offset:33}  sentiment:{magnitude:0.7  score:-0.7}}
 
 	// ネガティブな文章を集める
-	var neg_phrase []SentenceNLP
+	var neg_phrase []string
 	var minScore float32 = 100
 	for _, sentence := range sentiment.Sentences {
 		score := sentence.Sentiment.Score
 		if score < -0.1 {
-			neg_phrase = append(neg_phrase, SentenceNLP{
-				text: sentence.Text.Content,
-				score: score,
-			})
+			neg_phrase = append(neg_phrase, sentence.Text.Content)
 		}
 		if minScore > score {
 			minScore = score
@@ -68,11 +64,11 @@ func GetTextSentiment(text string) ([]SentenceNLP, string, error) {
 	// Return the judgment result
 	switch {
 	case minScore < -0.1:
-		return neg_phrase, "negative", nil
+		return neg_phrase, "neg", nil
 	case minScore >= -0.1 && minScore <= 0.1:
-		return nil, "neutral", nil
+		return make([]string, 0), "neutral", nil
 	case minScore > 0.1:
-		return nil, "positive", nil
+		return make([]string, 0), "pos", nil
 	}
 
 	return neg_phrase, "neutral", nil

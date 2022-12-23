@@ -200,7 +200,19 @@ func (qc QuestionController) GetQuestion(c *gin.Context) {
 	// 質問のカテゴリーを取得する
 	var categories []string
 	for _, category := range doc["category"].(primitive.A) {
-		categories = append(categories, category.(string))
+		categoryId := category.(primitive.ObjectID)
+		filterStatus := bson.M{"_id": categoryId}
+		var docCategory bson.M
+		categoryCollection := db.MongoClient.Database("insertDB").Collection("categories")
+		if err := categoryCollection.FindOne(context.TODO(), filterStatus,
+			options.FindOne().SetProjection(bson.M{"_id": 0, "categoryName": 1})).Decode(&docCategory); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+		categories = append(categories, docCategory["categoryName"].(string))
 	}
 
 	// ステータスを取得

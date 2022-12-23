@@ -7,6 +7,7 @@ import(
 
 	"back-challe-chara2022/db"
 	"back-challe-chara2022/entity/db_entity"
+	"back-challe-chara2022/crypto"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -24,7 +25,8 @@ func main() {
 	// bearToneCollection init
 	bearToneCollection := db.MongoClient.Database("insertDB").Collection("bearTones")
 	// 仮レスポンス
-	// responses_pos := []string{"楽しそう〜！", "偉いじゃん！", "がんばろ〜！！", "すごいよ！よく頑張ったね！"}
+	responses_pos := []string{"楽しそう〜！", "<name> 偉いじゃん！", "もし，<name> が困ったら僕を頼ってね！", "うんうん！"}
+	responses_neutral := []string{"うんうん！", "へー！", "もし，<name> が困ったら僕を頼ってね！", "困ったことがあったらコミュニティのみんなに問いをかけてみてもいいかもね！！"}
 	responses_neg := []string{"そうだよね", "もう一回最初から教えてよ", "そこってどういうことなの？", 
 						"<name> は頑張ってるやん！", "もうちょっと詰めてみようよ！", "<name> がそんなに考えてわかんないなら，誰もわかんないよ！", 
 						"今，頭が回らないだけで少し時間を空けて考えたらわかる時もあるよ！", "それはもう心が１回休めって言ってるんだよ",
@@ -38,6 +40,41 @@ func main() {
 		docTone := &db_entity.BearTone{
 			ToneId: primitive.NewObjectID(),
 			Response: response,
+			Sentiment: "neg",
+		}
+	
+		_, err = bearToneCollection.InsertOne(context.TODO(), docTone) // ここでMarshalBSON()される
+		if err != nil {
+			fmt.Println("Error inserting bear")
+			panic(err)
+		} else {
+			fmt.Println("Successfully inserting bear_tone")
+		}
+	}
+
+	for _, response := range responses_pos {
+		var err error
+		docTone := &db_entity.BearTone{
+			ToneId: primitive.NewObjectID(),
+			Response: response,
+			Sentiment: "pos",
+		}
+	
+		_, err = bearToneCollection.InsertOne(context.TODO(), docTone) // ここでMarshalBSON()される
+		if err != nil {
+			fmt.Println("Error inserting bear")
+			panic(err)
+		} else {
+			fmt.Println("Successfully inserting bear_tone")
+		}
+	}
+
+	for _, response := range responses_neutral {
+		var err error
+		docTone := &db_entity.BearTone{
+			ToneId: primitive.NewObjectID(),
+			Response: response,
+			Sentiment: "neutral",
 		}
 	
 		_, err = bearToneCollection.InsertOne(context.TODO(), docTone) // ここでMarshalBSON()される
@@ -57,7 +94,7 @@ func main() {
 		CommunityId: communityId,
 		CommunityName: "test",
 		Member: user_id_array,
-		Icon: "static/icon.jpg",
+		Icon: "static/icon.png",
 	}
 
 	_, err3 := CommunityCollection.InsertOne(context.TODO(), docCom) // ここでMarshalBSON()される
@@ -102,12 +139,14 @@ func main() {
 	var like_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	var community_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	userId := primitive.NewObjectID()
+	// パスワードのハッシュ化
+	passwordEncrypt, _ := crypto.PasswordEncrypt("test")
 	// community_id_array = append(community_id_array, communityId)
 	docUser := db_entity.User{
 		UserId: userId,
 		UserName: "test",
-		EmailAddress: "test@example.com",
-		Password: "password",
+		EmailAddress: "test@gmail.com",
+		Password: passwordEncrypt,
 		Icon: "static/test.png",
 		Profile: "test",
 		CommunityId: community_id_array,
@@ -277,6 +316,53 @@ func main() {
 		fmt.Println("Successfully inserting Priorities")
 	}
 
+	// categoryCollection init
+	categoryCollection := db.MongoClient.Database("insertDB").Collection("categories")
+	goId := primitive.NewObjectID()
+	reactId := primitive.NewObjectID()
+	javaId := primitive.NewObjectID()
+	flutterId := primitive.NewObjectID()
+	envId := primitive.NewObjectID()
+	codeerrId := primitive.NewObjectID()
+	pythonId := primitive.NewObjectID()
+	docCategory := []interface{}{
+		&db_entity.Category {
+			Id: goId,
+			CategoryName: "Go",
+		},
+		&db_entity.Category {
+			Id: reactId,
+			CategoryName: "React",
+		},
+		&db_entity.Category {
+			Id: javaId,
+			CategoryName: "java",
+		},
+		&db_entity.Category {
+			Id: flutterId,
+			CategoryName: "flutter",
+		},
+		&db_entity.Category {
+			Id: pythonId,
+			CategoryName: "python",
+		},
+		&db_entity.Category {
+			Id: envId,
+			CategoryName: "環境構築",
+		},
+		&db_entity.Category {
+			Id: codeerrId,
+			CategoryName: "コードエラー",
+		},
+	}
+	_, errCategory := categoryCollection.InsertMany(context.TODO(), docCategory) // ここでMarshalBSON()される
+	if errCategory != nil {
+		fmt.Println("Error inserting Category")
+        panic(errCategory)
+    } else {
+		fmt.Println("Successfully inserting Categories")
+	}
+
 	// questionCollection init
 	questionCollection := db.MongoClient.Database("insertDB").Collection("questions")
 	docQuestion := []interface{}{
@@ -284,18 +370,18 @@ func main() {
 			Id: primitive.NewObjectID(),
 			Title: "pythonがなんもわからん",
 			Detail: "#実装すること\n- pythonの環境構築\n- Goの環境構築\n",
-			Image: []string{"static/icon.jpg", "static/test.png"},
+			Image: []string{"static/icon.png", "static/test.png"},
 			CommunityId: communityId,
 			Questioner: docUser.UserId,
 			Like: []primitive.ObjectID{docUser.UserId},
 			Priority: urgentId, 
 			Status: answerWaitId, 
-			Category: []string{"環境構築", "pythonがまずわからん"},
+			Category: []primitive.ObjectID{goId, envId},
 			Answer: []db_entity.Answer {
 				db_entity.Answer {
 					Id: primitive.NewObjectID(),
 					Detail: "## なんもわからん\n- pythonがまずわからん\n- Goとかもっとしらん\n- Swift神!!",
-					Image: []string{"static/icon.jpg", "static/test.png"},
+					Image: []string{"static/icon.png", "static/test.png"},
 					Respondent: docUser.UserId,
 					Like: []primitive.ObjectID{docUser.UserId},
 				},	
@@ -305,18 +391,18 @@ func main() {
 			Id: primitive.NewObjectID(),
 			Title: "質問の取得",
 			Detail: "#実装すること\n- swiftの環境構築\n- Javaの環境構築\n",
-			Image: []string{"static/icon.jpg", "static/test.png"},
+			Image: []string{"static/icon.png", "static/test.png"},
 			CommunityId: communityId,
 			Questioner: docUser.UserId,
 			Like: []primitive.ObjectID{docUser.UserId},
 			Priority: moreSlowId, 
 			Status: numariId, 
-			Category: []string{"環境構築", "Golangがまずわからん"},
+			Category: []primitive.ObjectID{reactId, codeerrId},
 			Answer: []db_entity.Answer {
 				db_entity.Answer {
 					Id: primitive.NewObjectID(),
 					Detail: "## なんもわからん\n- pythonがまずわからん\n- Goとかもっとしらん\n- Swift神!!",
-					Image: []string{"static/icon.jpg", "static/test.png"},
+					Image: []string{"static/icon.png", "static/test.png"},
 					Respondent: docUser.UserId,
 					Like: []primitive.ObjectID{docUser.UserId},
 				},
