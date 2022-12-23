@@ -14,14 +14,14 @@ type SentenceNLP struct {
 	score float32 `json:"score"`
 }
 
-func GetTextSentiment(text string) ([]string, string, error) {
+func GetTextSentiment(text string) ([]string, string, int, error) {
         
 	ctx := context.TODO()
 
 	// Creates a client.
 	client, err := language.NewClient(ctx)
 	if err != nil {
-			return nil, "", err
+			return nil, "", 0, err
 	}
 	defer client.Close()
 
@@ -36,7 +36,7 @@ func GetTextSentiment(text string) ([]string, string, error) {
 			EncodingType: languagepb.EncodingType_UTF8,
 	})
 	if err != nil {
-		return nil, "", err
+		return nil, "", 0, err
 	}
 
 	type sentenceNLP struct {
@@ -60,17 +60,20 @@ func GetTextSentiment(text string) ([]string, string, error) {
 			minScore = score
 		}
 	}
+
+	// scoreの数値を取得
+	resScore := sentiment.DocumentSentiment.Magnitude * sentiment.DocumentSentiment.Score * 100
 	
 	// Return the judgment result
 	switch {
 	case minScore < -0.1:
-		return neg_phrase, "neg", nil
+		return neg_phrase, "neg", int(resScore), nil
 	case minScore >= -0.1 && minScore <= 0.1:
-		return make([]string, 0), "neutral", nil
+		return make([]string, 0), "neutral", int(resScore), nil
 	case minScore > 0.1:
-		return make([]string, 0), "pos", nil
+		return make([]string, 0), "pos", int(resScore), nil
 	}
 
-	return neg_phrase, "neutral", nil
+	return neg_phrase, "neutral", int(resScore), nil
 
 }

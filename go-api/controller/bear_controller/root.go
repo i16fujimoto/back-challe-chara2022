@@ -56,7 +56,7 @@ func (bc BearController) PostNotLoginSentimentResponse(c *gin.Context) {
 	var response string
 
 	// NLP API
-	negPhrase, sentiment, err := nlpAPI.GetTextSentiment(request.Text)
+	negPhrase, sentiment, score, err := nlpAPI.GetTextSentiment(request.Text)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code": http.StatusBadRequest,
@@ -101,6 +101,7 @@ func (bc BearController) PostNotLoginSentimentResponse(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"negPhrase": negPhrase,
 		"response": response,
+		"score": score,
 	})
 	return
 
@@ -163,7 +164,7 @@ func (bc BearController) PostSentimentResponse(c *gin.Context) {
 	var response string
 
 	// NLP API
-	negPhrase, sentiment, err := nlpAPI.GetTextSentiment(request.Text)
+	negPhrase, sentiment, score, err := nlpAPI.GetTextSentiment(request.Text)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code": http.StatusBadRequest,
@@ -244,6 +245,7 @@ func (bc BearController) PostSentimentResponse(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"negPhrase": negPhrase,
 		"response": response,
+		"score": score,
 	})
 	return
 
@@ -274,52 +276,17 @@ func (bc BearController) PostResponse(c *gin.Context) {
 	var response string
 	var history string
 
-
-	comCollection := db.MongoClient.Database("insertDB").Collection("communications")
-	// 検索条件
-	timeNow := time.Now()
-	filter := bson.M{
-		"userId": userId, 
-		"createdAt": bson.D{{"$lte", timeNow}},
-	}
-
-	fmt.Println(timeNow, timeNow.Add(time.Minute * (-3)))
-
-	var doc bson.M
-	findOptions := options.FindOne().SetProjection(bson.M{"_id": 0, "createdAt": 1}).SetSort(bson.D{{"createdAt", 1}})
-	// findOptions := options.Find().SetProjection(bson.M{"_id": 0, "messages" : 1}).SetLimit(10).SetSort(bson.M{"messages": bson.M{"createdAt": -1}})
-	err = comCollection.FindOne(context.TODO(), filter, findOptions).Decode(&doc)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code": http.StatusBadRequest,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	// 最後の履歴の時間
-	lastMessage := doc["createdAt"].(primitive.DateTime).Time()
-	// 比較対象の定義
-	min4Before := time.Now().Add(time.Minute * (-4))
-	min9Before := time.Now().Add(time.Minute * (-9))
-	min15Before := time.Now().Add(time.Minute * (-15))
-	min20Before := time.Now().Add(time.Minute * (-20))
-
 	// fmt.Printf("%T\n", doc["createdAt"].(primitive.DateTime).Time())
 	// 入力文
 	fmt.Println(request.Text)
 
 	switch {
-	case lastMessage.Before(min4Before):
+	case request.Score <= -10 && request.Score > -20:
 		response, history, err = adviceResponse(request.Text)
-	case lastMessage.Before(min9Before):
-		response, history, err = hintResponse(request.Text)
-	case lastMessage.Before(min15Before):
+	case request.Score <= -20 && request.Score > -30:
 		response, history, err = answerResponse(request.Text)
-	case lastMessage.Before(min20Before):
+	case request.Score <= -30:
 		response, history, err = askToOthersResponse(request.Text)
-	default:
-		response, history, err = adviceResponse(request.Text)
 	}
 
 	if err != nil {
@@ -423,7 +390,6 @@ func (bc BearController) GetHistory(c *gin.Context) {
 }
 
 // アドバイスを返す
-// 1 ~ 4 min
 func adviceResponse(text string) (string, string, error) {
 
 	fmt.Println("advice")
@@ -448,33 +414,31 @@ func adviceResponse(text string) (string, string, error) {
 }
 
 // ヒントを返す
-// 4 ~ 9 min
-func hintResponse(text string) (string, string, error) {
+// func hintResponse(text string) (string, string, error) {
 
-	fmt.Println("hint")
+// 	fmt.Println("hint")
 	
-	// prefix
-	var prefix string = "以下の悩みを解消するヒントを教えてください。\n"
+// 	// prefix
+// 	var prefix string = "以下の悩みを解消するヒントを教えてください。\n"
 
-	var response string
-	var err error
+// 	var response string
+// 	var err error
 
-	response, err = chatGPT.Response(context.TODO(), []string{prefix + text})
-	if err != nil {
-		return "", "", err
-	}
-	fmt.Println(response) // debug
-	var return2Index int = strings.Index(response, "\n\n")
-	if return2Index >= 0 {
-		response = response[return2Index+2:]
-	}
+// 	response, err = chatGPT.Response(context.TODO(), []string{prefix + text})
+// 	if err != nil {
+// 		return "", "", err
+// 	}
+// 	fmt.Println(response) // debug
+// 	var return2Index int = strings.Index(response, "\n\n")
+// 	if return2Index >= 0 {
+// 		response = response[return2Index+2:]
+// 	}
 
-	return response, "\\\\ クマからのヒント ! //", nil
-}
+// 	return response, "\\\\ クマからのヒント ! //", nil
+// }
 
 
 // 答えを返す
-// 9 ~ 15 min
 func answerResponse(text string) (string, string, error) {
 	
 	fmt.Println("answer")
@@ -496,7 +460,6 @@ func answerResponse(text string) (string, string, error) {
 }
 
 // 人に聞くことを勧める
-// 15 ~ 20 min
 func askToOthersResponse(text string) (string, string, error) {
 	
 	fmt.Println("ask to others")
