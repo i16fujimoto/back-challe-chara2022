@@ -104,6 +104,8 @@ func setRouter() *gin.Engine {
 			questionGroup.GET("/priority", ctrl.GetPriority)
 			// ステータス一覧を取得
 			questionGroup.GET("/status", ctrl.GetStatus)
+			// カテゴリー一覧を取得
+			questionGroup.GET("/category", ctrl.GetCategory)
 			// 質問・回答のいいねの更新
 			questionGroup.PATCH("/answer/like", ctrl.PatchLike)
 		}

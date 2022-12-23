@@ -70,6 +70,25 @@ func (c *Priority) MarshalBSON() ([]byte, error) {
     return bson.Marshal((*my)(c))
 }
 
+type Category struct {
+	Id primitive.ObjectID `json:"id" bson:"_id"`
+	CategoryName string `json:"categoryName" bson:"categoryName"`
+	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt" bson:"updatedAt"`
+	DeletedAt  *time.Time `json:"deletedAt" bson:"deletedAt"`
+}
+
+// Auto Create CreatedAt, UpdatedAt
+func (c *Category) MarshalBSON() ([]byte, error) {
+    if c.CreatedAt.IsZero() {
+        c.CreatedAt = time.Now()
+    }
+    c.UpdatedAt = time.Now()
+    
+    type my Category
+    return bson.Marshal((*my)(c))
+}
+
 type Question struct {
 	Id primitive.ObjectID `json:"id" bson:"_id"`
 	Title string `json:"title" bson:"title"`
@@ -80,7 +99,7 @@ type Question struct {
 	Like []primitive.ObjectID `json:"like" bson:"like"` // USer.ObjectID
 	Priority primitive.ObjectID `json:"priority" bson:"priority"` // 緊急 or なるはや or まったり 等
 	Status primitive.ObjectID `json:"status" bson:"status"` // 回答募集中 or 沼り中 or 解決済 等
-	Category []string `json:"category" bson:"category"`
+	Category []primitive.ObjectID `json:"category" bson:"category"`
 	// Language string `json:"language" bson:"language"` // 言語テーブル内の言語名を挿入
 	Answer []Answer `json:"answer" bson:"answer"` // SubCollection
 	CreatedAt  time.Time  `json:"createdAt" bson:"createdAt"`

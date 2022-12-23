@@ -69,9 +69,21 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 	for _, r := range results {
 
 		// カテゴリーを格納
-		var category []string
-		for _, c := range r["category"].(primitive.A) {
-			category = append(category, c.(string))
+		var categories []string
+		for _, category := range r["category"].(primitive.A) {
+			categoryId := category.(primitive.ObjectID)
+			filterStatus := bson.M{"_id": categoryId}
+			var docCategory bson.M
+			categoryCollection := db.MongoClient.Database("insertDB").Collection("categories")
+			if err := categoryCollection.FindOne(context.TODO(), filterStatus,
+				options.FindOne().SetProjection(bson.M{"_id": 0, "categoryName": 1})).Decode(&docCategory); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"code": http.StatusBadRequest,
+					"message": err.Error(),
+				})
+				return
+			}
+			categories = append(categories, docCategory["categoryName"].(string))
 		}
 
 		// 質問の投稿日時を格納
@@ -111,7 +123,7 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 		question := Question{
 			QuestionId: r["_id"].(primitive.ObjectID),
 			Title: r["title"].(string),
-			Category: category,
+			Category: categories,
 			Priority: docPriority["priorityName"].(string),
 			Status: docStatus["statusName"].(string),
 			Questioner: r["questioner"].(primitive.ObjectID),
@@ -156,6 +168,11 @@ func (qc QuestionController) PostQuestion(c *gin.Context) {
 	communityId, _ := primitive.ObjectIDFromHex(c.Param("communityId"))
 	priorityId, _ := primitive.ObjectIDFromHex(request.Priority)
 	statusId, _ := primitive.ObjectIDFromHex(request.Status)
+	var categoriesId []primitive.ObjectID
+	for _, categoryId := range request.Category {
+		Id, _ := primitive.ObjectIDFromHex(categoryId)
+		categoriesId = append(categoriesId, Id)
+	}
 
 	// 画像のアップロード
 	var urls []string
@@ -189,7 +206,7 @@ func (qc QuestionController) PostQuestion(c *gin.Context) {
 		Like: make([]primitive.ObjectID, 0),
 		Priority: priorityId, 
 		Status: statusId, 
-		Category: request.Category,
+		Category: categoriesId,
 		Answer: make([]db_entity.Answer, 0),
 	}
 	_, err = questionCollection.InsertOne(context.TODO(), docQuestion) // ここでMarshalBSON()される

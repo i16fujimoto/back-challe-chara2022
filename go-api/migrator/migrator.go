@@ -277,6 +277,53 @@ func main() {
 		fmt.Println("Successfully inserting Priorities")
 	}
 
+	// categoryCollection init
+	categoryCollection := db.MongoClient.Database("insertDB").Collection("categories")
+	goId := primitive.NewObjectID()
+	reactId := primitive.NewObjectID()
+	javaId := primitive.NewObjectID()
+	flutterId := primitive.NewObjectID()
+	envId := primitive.NewObjectID()
+	codeerrId := primitive.NewObjectID()
+	pythonId := primitive.NewObjectID()
+	docCategory := []interface{}{
+		&db_entity.Category {
+			Id: goId,
+			CategoryName: "Go",
+		},
+		&db_entity.Category {
+			Id: reactId,
+			CategoryName: "React",
+		},
+		&db_entity.Category {
+			Id: javaId,
+			CategoryName: "java",
+		},
+		&db_entity.Category {
+			Id: flutterId,
+			CategoryName: "flutter",
+		},
+		&db_entity.Category {
+			Id: pythonId,
+			CategoryName: "python",
+		},
+		&db_entity.Category {
+			Id: envId,
+			CategoryName: "環境構築",
+		},
+		&db_entity.Category {
+			Id: codeerrId,
+			CategoryName: "コードエラー",
+		},
+	}
+	_, errCategory := categoryCollection.InsertMany(context.TODO(), docCategory) // ここでMarshalBSON()される
+	if errCategory != nil {
+		fmt.Println("Error inserting Category")
+        panic(errCategory)
+    } else {
+		fmt.Println("Successfully inserting Categories")
+	}
+
 	// questionCollection init
 	questionCollection := db.MongoClient.Database("insertDB").Collection("questions")
 	docQuestion := []interface{}{
@@ -290,7 +337,7 @@ func main() {
 			Like: []primitive.ObjectID{docUser.UserId},
 			Priority: urgentId, 
 			Status: answerWaitId, 
-			Category: []string{"環境構築", "pythonがまずわからん"},
+			Category: []primitive.ObjectID{goId, envId},
 			Answer: []db_entity.Answer {
 				db_entity.Answer {
 					Id: primitive.NewObjectID(),
@@ -311,7 +358,7 @@ func main() {
 			Like: []primitive.ObjectID{docUser.UserId},
 			Priority: moreSlowId, 
 			Status: numariId, 
-			Category: []string{"環境構築", "Golangがまずわからん"},
+			Category: []primitive.ObjectID{reactId, codeerrId},
 			Answer: []db_entity.Answer {
 				db_entity.Answer {
 					Id: primitive.NewObjectID(),
