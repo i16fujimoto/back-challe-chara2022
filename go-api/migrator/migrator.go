@@ -7,6 +7,7 @@ import(
 
 	"back-challe-chara2022/db"
 	"back-challe-chara2022/entity/db_entity"
+	"back-challe-chara2022/crypto"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -57,7 +58,7 @@ func main() {
 		CommunityId: communityId,
 		CommunityName: "test",
 		Member: user_id_array,
-		Icon: "static/icon.jpg",
+		Icon: "static/icon.png",
 	}
 
 	_, err3 := CommunityCollection.InsertOne(context.TODO(), docCom) // ここでMarshalBSON()される
@@ -102,12 +103,14 @@ func main() {
 	var like_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	var community_id_array []primitive.ObjectID = make([]primitive.ObjectID, 0)
 	userId := primitive.NewObjectID()
+	// パスワードのハッシュ化
+	passwordEncrypt, _ := crypto.PasswordEncrypt("test")
 	// community_id_array = append(community_id_array, communityId)
 	docUser := db_entity.User{
 		UserId: userId,
 		UserName: "test",
-		EmailAddress: "test@example.com",
-		Password: "password",
+		EmailAddress: "test@gmail.com",
+		Password: passwordEncrypt,
 		Icon: "static/test.png",
 		Profile: "test",
 		CommunityId: community_id_array,
@@ -331,7 +334,7 @@ func main() {
 			Id: primitive.NewObjectID(),
 			Title: "pythonがなんもわからん",
 			Detail: "#実装すること\n- pythonの環境構築\n- Goの環境構築\n",
-			Image: []string{"static/icon.jpg", "static/test.png"},
+			Image: []string{"static/icon.png", "static/test.png"},
 			CommunityId: communityId,
 			Questioner: docUser.UserId,
 			Like: []primitive.ObjectID{docUser.UserId},
@@ -342,7 +345,7 @@ func main() {
 				db_entity.Answer {
 					Id: primitive.NewObjectID(),
 					Detail: "## なんもわからん\n- pythonがまずわからん\n- Goとかもっとしらん\n- Swift神!!",
-					Image: []string{"static/icon.jpg", "static/test.png"},
+					Image: []string{"static/icon.png", "static/test.png"},
 					Respondent: docUser.UserId,
 					Like: []primitive.ObjectID{docUser.UserId},
 				},	
@@ -352,7 +355,7 @@ func main() {
 			Id: primitive.NewObjectID(),
 			Title: "質問の取得",
 			Detail: "#実装すること\n- swiftの環境構築\n- Javaの環境構築\n",
-			Image: []string{"static/icon.jpg", "static/test.png"},
+			Image: []string{"static/icon.png", "static/test.png"},
 			CommunityId: communityId,
 			Questioner: docUser.UserId,
 			Like: []primitive.ObjectID{docUser.UserId},
@@ -363,7 +366,7 @@ func main() {
 				db_entity.Answer {
 					Id: primitive.NewObjectID(),
 					Detail: "## なんもわからん\n- pythonがまずわからん\n- Goとかもっとしらん\n- Swift神!!",
-					Image: []string{"static/icon.jpg", "static/test.png"},
+					Image: []string{"static/icon.png", "static/test.png"},
 					Respondent: docUser.UserId,
 					Like: []primitive.ObjectID{docUser.UserId},
 				},

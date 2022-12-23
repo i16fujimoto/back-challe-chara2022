@@ -53,7 +53,7 @@ func CreateUser(c *gin.Context) {
 			UserName: "べあ",
 			EmailAddress: form.EmailAddress,
 			Password: passwordEncrypt,
-			Icon: "static/icon.jpg",
+			Icon: "static/icon.png",
 			Profile: "test",
 			CommunityId: communityIdArray,
 			Status: "スッキリ",
