@@ -20,7 +20,7 @@ func GetJWTAuthentication(key string)(interface{}, error) {
 		Realm: "Qumatta User SECRET AREA", // Realm name to display to the user. Required.
 		SigningAlgorithm: "HS256",  // signing algorithm - possible values are HS256, HS384, HS512
 		Key: []byte(key), // Secret key used for signing. Required.
-		Timeout: 2 * time.Hour, // Duration that a jwt token is valid.
+		Timeout: 24 * time.Hour, // Duration that a jwt token is valid.
 		// このフィールドは、MaxRefreshが経過するまでクライアントがトークンをリフレッシュできるようする
 		// トークンの最大有効期限は MaxRefresh + Timeout となる
 		MaxRefresh:  time.Hour, 
