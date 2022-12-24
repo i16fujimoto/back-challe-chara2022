@@ -4,10 +4,12 @@ import (
 	"back-challe-chara2022/entity/request_entity/body"
 	"back-challe-chara2022/db"
 	"back-challe-chara2022/entity/db_entity"
+	"back-challe-chara2022/s3"
 
 	"net/http"
 	"fmt"
 	"context"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -26,7 +28,8 @@ type Question struct {
 	Category []string `json:"category"`
 	Status string `json:"status"`
 	Priority string `json:"priority"`
-	Questioner primitive.ObjectID `json:"questioner"`
+	Questioner string `json:"questioner"`
+	QuestionerIcon []byte `json:"questionerIcon"`
 	NumLikes int `json:"numLikes"`
 	CreatedAt primitive.DateTime `json:"createdAt"`
 }
@@ -118,13 +121,53 @@ func (qc QuestionController) GetQuestions(c *gin.Context) {
 			return
 		}
 
+		userCollection := db.MongoClient.Database("insertDB").Collection("users")
+		filterUser := bson.M{"_id": r["questioner"].(primitive.ObjectID)}
+		var docUser bson.M
+		if err := userCollection.FindOne(context.TODO(), filterUser,
+			options.FindOne().SetProjection(bson.M{"_id": 0, "userName": 1, "icon": 1})).Decode(&docUser); err != nil {
+			fmt.Println("aaaaaa")
+				c.JSON(http.StatusBadRequest, gin.H{
+				"code": http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		// S3バケットとオブジェクトを指定
+		url := docUser["icon"].(string)
+		var bucketIndex int = strings.Index(url, "/") // 最初に "/" が出現する位置
+		var bucketName, key string = url[:bucketIndex], url[bucketIndex:]
+		
+		fmt.Println(bucketName, key)
+		
+		// S3インスタンスを作成
+		s3Instance, err := s3.NewS3()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 503,
+				"message": "Service Unavailable",
+			})
+		}
+
+		// S3から画像ファイルのダウンロード
+		downloadKey := s3.GetObjectInput(bucketName, key)
+		buf, err := s3.Download(s3Instance, downloadKey) //[]byte
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code": 404,
+				"message": err.Error(),
+			})
+		}
+
 		question := Question{
 			QuestionId: r["_id"].(primitive.ObjectID),
 			Title: r["title"].(string),
 			Category: categories,
 			Priority: docPriority["priorityName"].(string),
 			Status: docStatus["statusName"].(string),
-			Questioner: r["questioner"].(primitive.ObjectID),
+			Questioner: docUser["userName"].(string),
+			QuestionerIcon: buf,
 			NumLikes: cntLikes,
 			CreatedAt: timestamp,
 		}
